@@ -40,8 +40,8 @@ video{width:100%;background:#05070b;border-radius:18px;max-height:60vh;object-fi
 <body>
 <div id="loginScreen" class="login"><div class="login-box">
 <img src="pulsechat-logo.png" class="login-logo"><h1>PulseChat</h1><p>Connect. Chat. Share.</p>
-<input id="loginName" placeholder="आपका नाम (Sign Up के लिए)"     <input id="loginName" placeholder="आपका नाम (Sign Up के लिए)" autocomplete="name">
-  autocomplete="name">
+<input id="loginName" placeholder="आपका नाम (Sign Up के लिए)" autocomplete="name">
+  
 <input id="loginEmail" type="email" placeholder="Email address" autocomplete="email">
 <input id="loginPassword" type="password" placeholder="Password (कम से कम 6 अक्षर)" autocomplete="current-password">
   <input id="loginPhone" type="tel" placeholder="Mobile Number (+91...)" autocomplete="tel" style="margin-top:8px">
@@ -92,8 +92,21 @@ video{width:100%;background:#05070b;border-radius:18px;max-height:60vh;object-fi
 <div class="card"><h3>Settings</h3><div class="setting"><span>🌙 Dark Mode</span><button id="darkSwitch" class="switch" onclick="toggleDark()"><i></i></button></div><div class="setting"><span>🔔 Notifications</span><button id="notifSwitch" class="switch on" onclick="toggleSetting(this)"><i></i></button></div><div class="setting"><span>🟢 Online Status</span><button class="switch on" onclick="toggleSetting(this)"><i></i></button></div><button class="btn danger" style="margin-top:15px" onclick="logout()">Logout</button></div>
 </section>
 
-<section id="randomVideo" class="page"><h2>Random Video Call</h2><div class="card"><div class="video-wrap"><video id="localVideo" autoplay playsinline muted></video></div><div id="callStatus" class="muted" style="margin-top:8px;text-align:center">Camera शुरू करने के लिए Start दबाएँ</div><div class="call-controls"><button class="btn primary" onclick="startCamera()">📹</button><button class="btn" onclick="toggleMic()">🎤</button><button class="btn end" onclick="stopCamera()">☎️</button></div></div><div class="card"><b>ℹ️ Demo mode</b><p class="muted" style="margin-top:6px">यह browser camera preview है। असली cross-device video call के लिए WebRTC signaling/backend चाहिए।</p></div></section>
-
+<section id="randomVideo" class="page">
+  <h2>Random Video Call</h2>
+  <div class="card">
+    <div class="video-wrap">
+      <video id="localVideo" autoplay playsinline muted style="width:100%;border-radius:14px;background:#000;"></video>
+      <video id="remoteVideo" autoplay playsinline style="width:100%;border-radius:14px;background:#111;margin-top:10px;"></video>
+    </div>
+    <div class="row" style="margin-top:12px;gap:8px">
+      <button class="btn primary" onclick="startRandomVideo()">Start</button>
+      <button class="btn soft" onclick="nextRandomUser()">Next</button>
+      <button class="btn" style="background:#fee2e2;color:#ef4444" onclick="stopVideoCall()">End</button>
+    </div>
+  </div>
+</section>
+  
 </main>
 <nav class="bottom-nav">
 <button class="nav-btn active" onclick="openPage('home',this)"><span class="nav-icon">🏠</span>Home</button>
