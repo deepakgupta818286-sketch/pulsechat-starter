@@ -45,6 +45,8 @@ video{width:100%;background:#05070b;border-radius:18px;max-height:60vh;object-fi
 <input id="loginPassword" type="password" placeholder="Password (कम से कम 6 अक्षर)" autocomplete="current-password">
 <button onclick="login()">Login करें</button>
 <button class="btn soft" style="width:100%;margin-top:9px;padding:14px" onclick="signup()">नया अकाउंट बनाएं / Sign Up</button>
+  <p style="margin-top:10px;text-align:right;"><a href="javascript:void(0)" onclick="forgotPassword()" style="color:#1677ff;font-size:13px;text-decoration:none;">Forgot Password?</a></p>
+  
 <p class="muted" style="margin-top:12px">आपका अकाउंट Firebase Authentication से सुरक्षित होगा।</p>
 </div></div>
 
@@ -127,20 +129,46 @@ let currentChat=null,stream=null,recorder=null,chunks=[],postImg="";
 function save(){localStorage.setItem(KEY,JSON.stringify(db))}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
 function toast(t){let x=document.getElementById("toast");x.textContent=t;x.classList.add("show");setTimeout(()=>x.classList.remove("show"),1800)}
-async function login(){
+async function forgotPassword(){
+  const email = document.getElementById("loginEmail").value.trim();
+  if(!email){
+    toast("कृपया पहले अपना Email भरें");
+    return;
+  }
+  try {
+    await auth.sendPasswordResetEmail(email);
+    toast("पासवर्ड रीसेट लिंक आपके Email पर भेज दिया गया है 📩");
+  } catch(e) {
+    toast(authError(e));
+  }
+}
+  
+  async function login(){
   const email=document.getElementById("loginEmail").value.trim();
   const password=document.getElementById("loginPassword").value;
   if(!email||!password){toast("Email और Password भरें");return}
   try{
     const cred=await auth.signInWithEmailAndPassword(email,password);
+    
+    // ईमेल वेरिफिकेशन की जाँच
+    if(!cred.user.emailVerified){
+      await auth.signOut();
+      toast("पहले अपना Email Verify करें! इनबॉक्स में लिंक चेक करें।");
+      return;
+    }
+
     const snap=await fs.collection("users").doc(cred.user.uid).get();
     const data=snap.exists?snap.data():{};
-    db.user={...db.user,...data,uid:cred.user.uid,email:cred.user.email,name:data.name||document.getElementById("loginName").value.trim()||email.split("@")[0]};
+    db.user={...db.user,...data,uid:cred.user.uid,email:cred.user.email,name:data.name||"User"};
     save();
-    await fs.collection("users").doc(cred.user.uid).set({name:db.user.name,email:cred.user.email,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
-    document.getElementById("loginScreen").style.display="none";document.getElementById("app").style.display="block";refresh();toast("Login successful ✅");
+    
+    document.getElementById("loginScreen").style.display="none";
+    document.getElementById("app").style.display="block";
+    refresh();
+    toast("स्वागत है! लॉगिन सफल ✅");
   }catch(e){toast(authError(e))}
 }
+  
 async function signup(){
   const name=document.getElementById("loginName").value.trim();
   const email=document.getElementById("loginEmail").value.trim();
@@ -150,11 +178,45 @@ async function signup(){
   if(password.length<6){toast("Password कम से कम 6 अक्षर का रखें");return}
   try{
     const cred=await auth.createUserWithEmailAndPassword(email,password);
-    db.user={name,email,uid:cred.user.uid,photo:""};save();
-    await fs.collection("users").doc(cred.user.uid).set({name,email,photo:"",createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-    document.getElementById("loginScreen").style.display="none";document.getElementById("app").style.display="block";refresh();toast("नया अकाउंट बन गया ✅");
+    
+    // 1. यूज़र को वेरिफिकेशन ईमेल भेजें
+    await cred.user.sendEmailVerification();
+    
+    // 2. Firestore में प्रोफ़ाइल सेव करें
+    await fs.collection("users").doc(cred.user.uid).set({
+      name,
+      email,
+      photo:"",
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    
+    // 3. वेरिफिकेशन से पहले सीधे ऐप में जाने से रोकें
+    await auth.signOut();
+    toast("खाता बन गया! अपना Email खोलकर Verify करें 📩");
   }catch(e){toast(authError(e))}
 }
+// सुरक्षित सेशन हैंडलिंग (पेज लोड पर ऑटो-चेक)
+auth.onAuthStateChanged(async (user) => {
+  if (user) {
+    if (user.emailVerified) {
+      const snap = await fs.collection("users").doc(user.uid).get();
+      const data = snap.exists ? snap.data() : {};
+      db.user = { ...db.user, ...data, uid: user.uid, email: user.email, name: data.name || "User" };
+      save();
+      document.getElementById("loginScreen").style.display = "none";
+      document.getElementById("app").style.display = "block";
+      refresh();
+    } else {
+      await auth.signOut();
+      document.getElementById("loginScreen").style.display = "flex";
+      document.getElementById("app").style.display = "none";
+    }
+  } else {
+    document.getElementById("loginScreen").style.display = "flex";
+    document.getElementById("app").style.display = "none";
+  }
+});
+  
 function authError(e){const m={"auth/email-already-in-use":"यह Email पहले से registered है। Login करें।","auth/invalid-email":"Email सही नहीं है।","auth/weak-password":"Password थोड़ा मजबूत रखें (कम से कम 6 अक्षर)।","auth/invalid-credential":"Email या Password गलत है।","auth/user-not-found":"अकाउंट नहीं मिला। पहले Sign Up करें।","auth/network-request-failed":"Internet connection जाँचें।","auth/operation-not-allowed":"Firebase Console में Email/Password sign-in चालू करें।"};return m[e.code]||("Firebase error: "+(e.message||e.code||"unknown"))}
 async function logout(){stopCamera();try{await auth.signOut()}catch(e){}localStorage.removeItem(KEY);location.reload()}
 function openPage(id,btn){stopCameraIfNeeded(id);document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));document.getElementById(id).classList.add("active");document.querySelectorAll(".nav-btn").forEach(x=>x.classList.remove("active"));if(btn)btn.classList.add("active");if(id==="home")renderFeed();if(id==="people")renderUsers();if(id==="chats")renderChats();if(id==="profile"){renderProfile();renderMyPosts()}if(id==="notifications")renderNotifications();if(id==="randomVideo")document.getElementById("callStatus").textContent="Camera शुरू करने के लिए Start दबाएँ"}
