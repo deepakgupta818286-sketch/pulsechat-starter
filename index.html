@@ -165,7 +165,11 @@ function setupRecaptcha() {
 async function login() {
   const email = document.getElementById("loginEmail").value.trim();
   const password = document.getElementById("loginPassword").value;
-  const phone = document.getElementById("loginPhone").value.trim();
+  let phone = document.getElementById("loginPhone").value.trim();
+  if (phone && !phone.startsWith("+")) {
+  phone = "+91" + phone;
+  }
+  
   const otp = document.getElementById("loginOtp").value.trim();
 
   if (!email || !password) {
@@ -257,9 +261,9 @@ async function signup(){
     toast("खाता बन गया! अपना Email खोलकर Verify करें 📩");
   }catch(e){toast(authError(e))}
 }
-// सुरक्षित सेशन हैंडलिंग (पेज लोड पर ऑटो-चेक)
+// सुरक्षित सेशन हैंडलिंग (बिना OTP पूरा हुए ऐप में न जाने दें)
 auth.onAuthStateChanged(async (user) => {
-  if (user) {
+  if (user && confirmationResult) {
     if (user.emailVerified) {
       const snap = await fs.collection("users").doc(user.uid).get();
       const data = snap.exists ? snap.data() : {};
@@ -278,6 +282,7 @@ auth.onAuthStateChanged(async (user) => {
     document.getElementById("app").style.display = "none";
   }
 });
+  
   
 function authError(e){const m={"auth/email-already-in-use":"यह Email पहले से registered है। Login करें।","auth/invalid-email":"Email सही नहीं है।","auth/weak-password":"Password थोड़ा मजबूत रखें (कम से कम 6 अक्षर)।","auth/invalid-credential":"Email या Password गलत है।","auth/user-not-found":"अकाउंट नहीं मिला। पहले Sign Up करें।","auth/network-request-failed":"Internet connection जाँचें।","auth/operation-not-allowed":"Firebase Console में Email/Password sign-in चालू करें।"};return m[e.code]||("Firebase error: "+(e.message||e.code||"unknown"))}
 async function logout(){stopCamera();try{await auth.signOut()}catch(e){}localStorage.removeItem(KEY);location.reload()}
