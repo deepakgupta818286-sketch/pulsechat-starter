@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1677ff">
+<title>PulseChat V2</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;background:#eef2f7;color:#172033}
+body.dark{background:#0b1220;color:#e5e7eb}.app{max-width:720px;margin:auto;min-height:100vh;background:#f8fafc}
+.dark .app,.dark .card,.dark .post,.dark .header,.dark .bottom-nav,.dark input,.dark textarea,.dark .modal-box{background:#111827;color:#e5e7eb;border-color:#273449}
+.header{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid #e5e7eb;padding:10px 15px;display:flex;align-items:center;justify-content:space-between}
+.logo{width:45px;height:45px;border-radius:14px;object-fit:cover}.logo-area{display:flex;align-items:center;gap:10px}.logo-text{font-size:21px;font-weight:800;color:#1677ff}
+.profile-button{width:42px;height:42px;border-radius:50%;background:#eaf2ff;font-size:20px}main{padding:15px 15px 95px}
+.page{display:none}.page.active{display:block}.welcome{padding:23px;border-radius:22px;color:white;background:linear-gradient(135deg,#1677ff,#7c3aed);margin-bottom:15px}.welcome h1{font-size:27px;margin-bottom:7px}
+.card,.post{background:white;border:1px solid #e5e7eb;border-radius:18px;padding:15px;margin-bottom:15px}.row{display:flex;align-items:center;gap:10px}.spacer{flex:1}
+.avatar{width:46px;height:46px;border-radius:50%;background:#dbeafe;color:#1677ff;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:18px;flex:none}
+.big-avatar{width:92px;height:92px;border-radius:50%;background:#dbeafe;color:#1677ff;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:bold;margin:auto}
+.muted{color:#64748b;font-size:13px}.dark .muted{color:#94a3b8}
+.btn{border:0;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}.primary{background:#1677ff;color:#fff}.soft{background:#eaf2ff;color:#1677ff}.danger{background:#fee2e2;color:#dc2626}
+input,textarea{font:inherit;width:100%;padding:12px;border:1px solid #dbe2ea;border-radius:13px;outline:none;background:#fff;color:inherit}textarea{min-height:90px;resize:none;margin-top:12px}.search{margin:12px 0}
+.user{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #edf0f4}.user:last-child{border-bottom:0}
+.tabs{display:flex;gap:8px;overflow:auto;margin:12px 0}.tab{white-space:nowrap;border:0;padding:9px 13px;border-radius:20px;background:#e5e7eb}.tab.active{background:#1677ff;color:white}
+.story-row{display:flex;gap:12px;overflow:auto;padding:5px 0 14px}.story{text-align:center;min-width:68px;font-size:11px}.story .avatar{width:58px;height:58px;margin:auto;border:3px solid #7c3aed}
+.post-text{margin-top:12px;line-height:1.5;white-space:pre-wrap}.post-actions{display:flex;gap:8px;margin-top:12px}.post-actions button{background:#f1f5f9;border:0;border-radius:10px;padding:8px 11px}.dark .post-actions button{background:#1f2937;color:#e5e7eb}
+.chat-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}.back{width:42px;height:42px;border:0;border-radius:12px;background:#eaf2ff;color:#1677ff;font-size:20px}
+.messages{height:52vh;overflow:auto;background:#eef2f7;border-radius:18px;padding:12px}.dark .messages{background:#0b1220}.message{max-width:78%;padding:10px 13px;border-radius:16px;margin:7px 0;word-break:break-word}.me{background:#1677ff;color:white;margin-left:auto;border-bottom-right-radius:4px}.other{background:white;border:1px solid #e1e5eb;border-bottom-left-radius:4px}.dark .other{background:#1f2937;border-color:#374151}
+.chat-input{display:flex;gap:7px;margin-top:9px}.chat-input input{flex:1}.iconbtn{border:0;border-radius:12px;background:#eaf2ff;color:#1677ff;padding:0 13px;font-size:19px}
+.reel{height:410px;border-radius:22px;margin-bottom:15px;padding:20px;display:flex;align-items:flex-end;color:white;background:linear-gradient(145deg,#111827,#2563eb)}
+.reel:nth-child(3){background:linear-gradient(145deg,#7c2d12,#f97316)}.reel:nth-child(4){background:linear-gradient(145deg,#064e3b,#10b981)}
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(720px,100%);background:white;border-top:1px solid #e5e7eb;display:flex;justify-content:space-around;padding:7px 2px;z-index:30}.nav-btn{background:none;border:0;color:#64748b;font-size:9px;font-weight:700}.nav-btn.active{color:#1677ff}.nav-icon{display:block;font-size:20px}
+.login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#eaf3ff,#f8fafc)}.login-box{width:100%;max-width:410px;background:white;padding:25px;border-radius:25px;box-shadow:0 20px 50px #0001}.login-logo{width:105px;height:105px;display:block;margin:auto;border-radius:27px}.login-box h1{text-align:center;color:#1677ff;margin-top:10px}.login-box p{text-align:center;color:#64748b;margin:6px 0 20px}.login-box input{margin-bottom:11px}.login-box button{width:100%;padding:14px;border:0;border-radius:13px;background:#1677ff;color:#fff;font-weight:bold;font-size:16px}
+.modal{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;padding:18px;z-index:60}.modal.show{display:flex}.modal-box{width:100%;max-width:430px;background:white;border-radius:20px;padding:20px;max-height:85vh;overflow:auto}.modal-box h2{margin-bottom:12px}.close{float:right;border:0;background:#eee;border-radius:9px;padding:7px 10px}
+.setting{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid #e5e7eb}.switch{width:48px;height:27px;border-radius:20px;background:#cbd5e1;padding:3px}.switch i{display:block;width:21px;height:21px;background:white;border-radius:50%;transition:.2s}.switch.on{background:#1677ff}.switch.on i{transform:translateX(21px)}
+.toast{position:fixed;bottom:82px;left:50%;transform:translate(-50%,20px);background:#111827;color:white;padding:10px 15px;border-radius:12px;opacity:0;transition:.25s;z-index:100}.toast.show{opacity:1;transform:translate(-50%,0)}
+video{width:100%;background:#05070b;border-radius:18px;max-height:60vh;object-fit:cover}.video-wrap{position:relative}.local{position:absolute;width:100px;height:145px;right:12px;top:12px;border:2px solid white}.call-controls{display:flex;justify-content:center;gap:9px;margin-top:10px}.call-controls button{width:50px;height:50px;border:0;border-radius:50%}.end{background:#ef4444;color:white}
+@media(max-width:480px){.welcome h1{font-size:23px}.nav-btn{font-size:8px}.nav-icon{font-size:19px}}
+</style>
+</head>
+<body>
+<div id="loginScreen" class="login"><div class="login-box">
+<img src="pulsechat-logo.png" class="login-logo"><h1>PulseChat</h1><p>Connect. Chat. Share.</p>
+<input id="loginName" placeholder="आपका नाम (Sign Up के लिए)" value="Deepak" autocomplete="name">
+<input id="loginEmail" type="email" placeholder="Email address" autocomplete="email">
+<input id="loginPassword" type="password" placeholder="Password (कम से कम 6 अक्षर)" autocomplete="current-password">
+<button onclick="login()">Login करें</button>
+<button class="btn soft" style="width:100%;margin-top:9px;padding:14px" onclick="signup()">नया अकाउंट बनाएं / Sign Up</button>
+<p class="muted" style="margin-top:12px">आपका अकाउंट Firebase Authentication से सुरक्षित होगा।</p>
+</div></div>
+
+<div id="app" class="app" style="display:none">
+<header class="header"><div class="logo-area"><img src="pulsechat-logo.png" class="logo"><div class="logo-text">PulseChat</div></div><button class="profile-button" onclick="openPage('profile')">👤</button></header>
+<main>
+
+<section id="home" class="page active">
+<div class="welcome"><h1>Welcome to PulseChat 👋</h1><p>Chat, share, follow और connect करें।</p></div>
+<div class="card"><b>Stories</b><div id="stories" class="story-row"></div></div>
+<div class="card"><div class="row"><div id="homeAvatar" class="avatar">D</div><b id="homeName">Deepak</b><div class="spacer"></div></div>
+<textarea id="postText" placeholder="आप क्या सोच रहे हैं?"></textarea>
+<div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap"><label class="btn soft">📷 Photo / Reel <input id="postImage" type="file" accept="image/*,video/*" hidden onchange="previewPostImage(this)"></label><select id="postPrivacy" aria-label="Post privacy" style="max-width:145px"><option value="public">🌍 Public</option><option value="private">🔒 Private</option></select><div class="spacer"></div><button class="btn primary" onclick="createPost()">Post</button></div>
+<div id="imagePreview"></div></div><div id="feed"></div>
+</section>
+
+<section id="people" class="page"><h2>People</h2><input id="searchUsers" class="search" placeholder="लोगों को खोजें..." oninput="renderUsers()"><div class="card" id="usersList"></div></section>
+
+<section id="chats" class="page"><h2>Chats</h2><div class="card" id="chatList"></div></section>
+
+<section id="chatRoom" class="page"><div class="chat-header"><button class="back" onclick="openPage('chats')">←</button><div><b id="chatUserName">Chat</b><div class="muted" id="chatStatus">Online</div></div></div>
+<div id="messages" class="messages"></div><div class="chat-input"><label class="iconbtn">📎<input hidden type="file" accept="image/*" onchange="sendImage(this)"></label><button class="iconbtn" onclick="recordVoice()">🎤</button><input id="messageInput" placeholder="Message लिखें..." onkeydown="if(event.key==='Enter')sendMessage()"><button class="btn primary" onclick="sendMessage()">Send</button></div></section>
+
+<section id="reels" class="page"><h2>Reels</h2>
+<div class="reel"><div><h2>PulseChat 🎬</h2><p>आपके लिए नए updates और videos.</p></div></div>
+<div class="reel"><div><h2>Share Your Vibe ✨</h2><p>अपने दोस्तों के साथ moments share करें।</p></div></div>
+<div class="reel"><div><h2>Stay Connected ❤️</h2><p>दोस्तों से जुड़े रहें।</p></div></div>
+</section>
+
+<section id="notifications" class="page"><h2>Notifications</h2><div id="notificationsList" class="card"></div></section>
+
+<section id="profile" class="page"><h2>My Profile</h2><div class="card" style="text-align:center"><img id="profilePhoto" class="big-avatar" alt="Profile photo" style="object-fit:cover;display:none"><div id="profileAvatar" class="big-avatar">D</div><h2 id="profileName" style="margin-top:10px">Deepak</h2><div id="profileEmail" class="muted"></div><label class="btn soft" style="display:inline-block;margin-top:14px">📷 Profile Photo चुनें<input id="profilePhotoInput" type="file" accept="image/*" hidden onchange="saveProfilePhoto(this)"></label><input id="newName" style="margin-top:15px" placeholder="नया नाम"><button class="btn primary" style="margin-top:10px" onclick="saveProfile()">Save Profile</button></div>
+<div class="card"><h3>मेरी पोस्ट ❤️</h3><div id="myPosts"></div></div>
+<div class="card"><h3>Settings</h3><div class="setting"><span>🌙 Dark Mode</span><button id="darkSwitch" class="switch" onclick="toggleDark()"><i></i></button></div><div class="setting"><span>🔔 Notifications</span><button id="notifSwitch" class="switch on" onclick="toggleSetting(this)"><i></i></button></div><div class="setting"><span>🟢 Online Status</span><button class="switch on" onclick="toggleSetting(this)"><i></i></button></div><button class="btn danger" style="margin-top:15px" onclick="logout()">Logout</button></div>
+</section>
+
+<section id="randomVideo" class="page"><h2>Random Video Call</h2><div class="card"><div class="video-wrap"><video id="localVideo" autoplay playsinline muted></video></div><div id="callStatus" class="muted" style="margin-top:8px;text-align:center">Camera शुरू करने के लिए Start दबाएँ</div><div class="call-controls"><button class="btn primary" onclick="startCamera()">📹</button><button class="btn" onclick="toggleMic()">🎤</button><button class="btn end" onclick="stopCamera()">☎️</button></div></div><div class="card"><b>ℹ️ Demo mode</b><p class="muted" style="margin-top:6px">यह browser camera preview है। असली cross-device video call के लिए WebRTC signaling/backend चाहिए।</p></div></section>
+
+</main>
+<nav class="bottom-nav">
+<button class="nav-btn active" onclick="openPage('home',this)"><span class="nav-icon">🏠</span>Home</button>
+<button class="nav-btn" onclick="openPage('people',this)"><span class="nav-icon">👥</span>People</button>
+<button class="nav-btn" onclick="openPage('chats',this)"><span class="nav-icon">💬</span>Chats</button>
+<button class="nav-btn" onclick="openPage('randomVideo',this)"><span class="nav-icon">🎥</span>Call</button>
+<button class="nav-btn" onclick="openPage('reels',this)"><span class="nav-icon">🎬</span>Reels</button>
+<button class="nav-btn" onclick="openPage('notifications',this)"><span class="nav-icon">🔔</span>Alerts</button>
+</nav></div>
+
+<div id="modal" class="modal"><div class="modal-box"><button class="close" onclick="closeModal()">✕</button><div id="modalContent"></div></div></div>
+<div id="toast" class="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAwgk2ouRggHR-sM9NeN52zMT6LFMZ44iI",
+  authDomain: "pulsechat-bc35f.firebaseapp.com",
+  projectId: "pulsechat-bc35f",
+  storageBucket: "pulsechat-bc35f.firebasestorage.app",
+  messagingSenderId: "680301724013",
+  appId: "1:680301724013:web:dc4568e3a2f56e1c171a64",
+  measurementId: "G-561WBR4LWD"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const fs = firebase.firestore();
+const KEY="pulsechat_v4";
+const people=[
+{id:1,name:"Amit Sharma",status:"Online",avatar:"A"},
+{id:2,name:"Priya Singh",status:"Online",avatar:"P"},
+{id:3,name:"Rahul Verma",status:"Away",avatar:"R"},
+{id:4,name:"Neha Gupta",status:"Online",avatar:"N"},
+{id:5,name:"Rohit Kumar",status:"Online",avatar:"R"},
+{id:6,name:"Anjali Singh",status:"Online",avatar:"A"},
+{id:7,name:"Vikas Yadav",status:"Away",avatar:"V"}];
+let db=JSON.parse(localStorage.getItem(KEY))||{user:{name:"Deepak",email:"demo@pulsechat.com"},posts:[],stories:[],following:[],blocked:[],notifications:[],chats:{1:[{from:"other",text:"Hi 👋 Welcome to PulseChat!"}],2:[],3:[],4:[],5:[],6:[],7:[]}};
+let currentChat=null,stream=null,recorder=null,chunks=[],postImg="";
+
+function save(){localStorage.setItem(KEY,JSON.stringify(db))}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+function toast(t){let x=document.getElementById("toast");x.textContent=t;x.classList.add("show");setTimeout(()=>x.classList.remove("show"),1800)}
+async function login(){
+  const email=document.getElementById("loginEmail").value.trim();
+  const password=document.getElementById("loginPassword").value;
+  if(!email||!password){toast("Email और Password भरें");return}
+  try{
+    const cred=await auth.signInWithEmailAndPassword(email,password);
+    const snap=await fs.collection("users").doc(cred.user.uid).get();
+    const data=snap.exists?snap.data():{};
+    db.user={...db.user,...data,uid:cred.user.uid,email:cred.user.email,name:data.name||document.getElementById("loginName").value.trim()||email.split("@")[0]};
+    save();
+    await fs.collection("users").doc(cred.user.uid).set({name:db.user.name,email:cred.user.email,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    document.getElementById("loginScreen").style.display="none";document.getElementById("app").style.display="block";refresh();toast("Login successful ✅");
+  }catch(e){toast(authError(e))}
+}
+async function signup(){
+  const name=document.getElementById("loginName").value.trim();
+  const email=document.getElementById("loginEmail").value.trim();
+  const password=document.getElementById("loginPassword").value;
+  if(!name){toast("Sign Up के लिए अपना नाम भरें");return}
+  if(!email||!password){toast("Email और Password भरें");return}
+  if(password.length<6){toast("Password कम से कम 6 अक्षर का रखें");return}
+  try{
+    const cred=await auth.createUserWithEmailAndPassword(email,password);
+    db.user={name,email,uid:cred.user.uid,photo:""};save();
+    await fs.collection("users").doc(cred.user.uid).set({name,email,photo:"",createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    document.getElementById("loginScreen").style.display="none";document.getElementById("app").style.display="block";refresh();toast("नया अकाउंट बन गया ✅");
+  }catch(e){toast(authError(e))}
+}
+function authError(e){const m={"auth/email-already-in-use":"यह Email पहले से registered है। Login करें।","auth/invalid-email":"Email सही नहीं है।","auth/weak-password":"Password थोड़ा मजबूत रखें (कम से कम 6 अक्षर)।","auth/invalid-credential":"Email या Password गलत है।","auth/user-not-found":"अकाउंट नहीं मिला। पहले Sign Up करें।","auth/network-request-failed":"Internet connection जाँचें।","auth/operation-not-allowed":"Firebase Console में Email/Password sign-in चालू करें।"};return m[e.code]||("Firebase error: "+(e.message||e.code||"unknown"))}
+async function logout(){stopCamera();try{await auth.signOut()}catch(e){}localStorage.removeItem(KEY);location.reload()}
+function openPage(id,btn){stopCameraIfNeeded(id);document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));document.getElementById(id).classList.add("active");document.querySelectorAll(".nav-btn").forEach(x=>x.classList.remove("active"));if(btn)btn.classList.add("active");if(id==="home")renderFeed();if(id==="people")renderUsers();if(id==="chats")renderChats();if(id==="profile"){renderProfile();renderMyPosts()}if(id==="notifications")renderNotifications();if(id==="randomVideo")document.getElementById("callStatus").textContent="Camera शुरू करने के लिए Start दबाएँ"}
+function stopCameraIfNeeded(id){if(id!=="randomVideo")stopCamera()}
+function refresh(){document.getElementById("homeName").textContent=db.user.name;document.getElementById("homeAvatar").textContent=db.user.name[0].toUpperCase();renderFeed();renderUsers();renderChats();renderProfile();renderMyPosts();renderStories();renderNotifications();if(localStorage.getItem("pulse_dark")==="1"){document.body.classList.add("dark");document.getElementById("darkSwitch").classList.add("on")}}
+function renderUsers(){let q=(document.getElementById("searchUsers")?.value||"").toLowerCase();document.getElementById("usersList").innerHTML=people.filter(p=>!db.blocked.includes(p.id)&&p.name.toLowerCase().includes(q)).map(p=>`<div class="user"><div class="avatar">${p.avatar}</div><div><b>${esc(p.name)}</b><div class="muted">${p.status}</div></div><div class="spacer"></div><button class="btn soft" onclick="openChat(${p.id})">Chat</button><button class="btn" onclick="personMenu(${p.id})">•••</button></div>`).join("")}
+function personMenu(id){let p=people.find(x=>x.id===id);showModal(`<h2>${esc(p.name)}</h2><button class="btn soft" style="width:100%;margin:6px 0" onclick="follow(${id})">${db.following.includes(id)?"Unfollow":"Follow"} ➕</button><button class="btn danger" style="width:100%;margin:6px 0" onclick="blockUser(${id})">🚫 Block</button><button class="btn" style="width:100%;margin:6px 0" onclick="reportUser(${id})">⚠️ Report</button>`)}
+function follow(id){if(db.following.includes(id))db.following=db.following.filter(x=>x!==id);else db.following.push(id);db.notifications.unshift({text:"आपने "+people.find(p=>p.id===id).name+" को follow किया",time:new Date().toLocaleString("hi-IN")});save();closeModal();toast("Follow status updated");renderNotifications()}
+function blockUser(id){db.blocked.push(id);save();closeModal();renderUsers();toast("User blocked")}
+function reportUser(id){db.notifications.unshift({text:"Report submit किया गया",time:new Date().toLocaleString("hi-IN")});save();closeModal();toast("Report submit हो गई")}
+function renderChats(){document.getElementById("chatList").innerHTML=people.filter(p=>!db.blocked.includes(p.id)).map(p=>{let m=db.chats[p.id]||[],last=m.length?m[m.length-1].text:"नई चैट शुरू करें";return `<div class="user" onclick="openChat(${p.id})"><div class="avatar">${p.avatar}</div><div><b>${esc(p.name)}</b><div class="muted">${esc(last)}</div></div><div class="spacer"></div>💬</div>`}).join("")}
+function openChat(id){currentChat=id;let p=people.find(x=>x.id===id);document.getElementById("chatUserName").textContent=p.name;openPage("chatRoom");renderMessages()}
+function renderMessages(){let c=document.getElementById("messages"),m=db.chats[currentChat]||[];c.innerHTML=m.map(x=>`<div class="message ${x.from==="me"?"me":"other"}">${x.type==="image"?`<img src="${x.text}" style="max-width:100%;border-radius:10px">`:esc(x.text)}</div>`).join("");c.scrollTop=c.scrollHeight}
+function sendMessage(){let i=document.getElementById("messageInput"),t=i.value.trim();if(!t||currentChat==null)return;db.chats[currentChat]??=[];db.chats[currentChat].push({from:"me",text:t});i.value="";save();renderMessages();renderChats();setTimeout(()=>{db.chats[currentChat].push({from:"other",text:"Thanks for your message 😊"});db.notifications.unshift({text:"नया message आया",time:new Date().toLocaleString("hi-IN")});save();renderMessages();renderChats();renderNotifications()},700)}
+function sendImage(input){let f=input.files[0];if(!f||currentChat==null)return;let r=new FileReader();r.onload=()=>{db.chats[currentChat].push({from:"me",type:"image",text:r.result});save();renderMessages()};r.readAsDataURL(f)}
+function recordVoice(){if(!navigator.mediaDevices?.getUserMedia){toast("Voice recording supported नहीं है");return}if(recorder?.state==="recording"){recorder.stop();toast("Voice recording stopped");return}navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{chunks=[];recorder=new MediaRecorder(s);recorder.ondataavailable=e=>chunks.push(e.data);recorder.onstop=()=>{s.getTracks().forEach(t=>t.stop());db.chats[currentChat].push({from:"me",text:"🎤 Voice message (demo)"});save();renderMessages()};recorder.start();toast("Recording शुरू... फिर 🎤 दबाएँ")}).catch(()=>toast("Microphone permission दें"))}
+function previewPostImage(input){let f=input.files[0];if(!f)return;const isVideo=f.type.startsWith("video/");if(!f.type.startsWith("image/")&&!isVideo){toast("Photo या video चुनें");return}if(f.size>8*1024*1024){toast("Demo version में 8MB से छोटी file चुनें");input.value="";return}let r=new FileReader();r.onload=()=>{postImg=r.result;window.postMediaType=isVideo?"video":"image";document.getElementById("imagePreview").innerHTML=isVideo?`<video controls playsinline src="${r.result}" style="width:100%;max-height:220px;border-radius:14px;margin-top:10px"></video>`:`<img src="${r.result}" style="width:100%;max-height:220px;object-fit:cover;border-radius:14px;margin-top:10px">`};r.readAsDataURL(f)}
+async function createPost(){let i=document.getElementById("postText"),t=i.value.trim();if(!t&&!postImg){toast("कुछ लिखें या photo/video चुनें");return}const user=auth.currentUser;if(!user){toast("पहले Login करें");return}let post={id:Date.now(),text:t,img:postImg,mediaType:window.postMediaType||"image",privacy:document.getElementById("postPrivacy").value||"public",time:new Date().toLocaleString("hi-IN"),createdAt:firebase.firestore.FieldValue.serverTimestamp(),likes:0,liked:false,comments:[],uid:user.uid,userName:db.user.name||user.email};try{await fs.collection("posts").doc(String(post.id)).set(post);db.posts.unshift({...post,createdAt:null});i.value="";postImg="";window.postMediaType="image";document.getElementById("postImage").value="";document.getElementById("postPrivacy").value="public";document.getElementById("imagePreview").innerHTML="";save();renderFeed();renderMyPosts();toast("Post Firebase में publish हो गई ❤️")}catch(e){toast("Firebase में post सेव नहीं हुई। Firestore Rules जाँचें")}}
+async function loadCloudPosts(){if(!auth.currentUser)return;try{const snap=await fs.collection("posts").orderBy("id","desc").limit(100).get();const cloud=snap.docs.map(d=>({...d.data(),id:d.data().id||Number(d.id)}));const own=cloud.filter(p=>p.uid===auth.currentUser.uid);const publicPosts=cloud.filter(p=>p.privacy!=="private");const merged=[...own,...publicPosts.filter(p=>p.uid!==auth.currentUser.uid)];const unique=new Map(merged.map(p=>[String(p.id),p]));db.posts=[...unique.values()].sort((a,b)=>(Number(b.id)||0)-(Number(a.id)||0));save();renderFeed();renderMyPosts()}catch(e){console.warn("Could not load cloud posts",e)}}
+function renderFeed(){let f=document.getElementById("feed");let uid=auth.currentUser?.uid||db.user.uid||"";let visible=(db.posts||[]).filter(p=>p.privacy!=="private"||p.uid===uid);if(!visible.length){f.innerHTML='<div class="card muted">अभी कोई Public post नहीं है। पहली post आप करें ❤️</div>';return}f.innerHTML=visible.map(p=>`<div class="post"><div class="row"><div class="avatar">${esc((p.userName||db.user.name||"U")[0].toUpperCase())}</div><div><b>${esc(p.userName||db.user.name||"User")}</b><div class="muted">${esc(p.time||"")} · ${p.privacy==="private"?"🔒 Private":"🌍 Public"}</div></div></div>${p.img?(p.mediaType==="video"?`<video controls playsinline src="${p.img}" style="width:100%;max-height:420px;border-radius:14px;margin-top:12px"></video>`:`<img src="${p.img}" style="width:100%;max-height:350px;object-fit:cover;border-radius:14px;margin-top:12px">`):""}<div class="post-text">${esc(p.text||"")}</div><div class="post-actions"><button onclick="likePost(${p.id})">${p.liked?"❤️":"🤍"} ${p.likes||0}</button><button onclick="commentPost(${p.id})">💬 ${(p.comments||[]).length}</button><button onclick="sharePost(${p.id})">↗️ Share</button></div></div>`).join("")}
+function likePost(id){let p=db.posts.find(x=>x.id===id);p.liked=!p.liked;p.likes+=p.liked?1:-1;save();renderFeed()}
+function commentPost(id){let t=prompt("Comment लिखें");if(!t)return;db.posts.find(x=>x.id===id).comments.push({name:db.user.name,text:t});save();renderFeed();toast("Comment added")}
+function sharePost(id){let p=db.posts.find(x=>x.id===id);if(navigator.share)navigator.share({title:"PulseChat",text:p.text||"PulseChat post"});else{navigator.clipboard?.writeText(p.text||"PulseChat post");toast("Share text copied")}}
+function renderStories(){let names=["Your Story","Amit","Priya","Neha","Rahul","Anjali"];document.getElementById("stories").innerHTML=names.map((n,i)=>`<div class="story" onclick="${i===0?"addStory()":"viewStory('"+n+"')"}"><div class="avatar">${n[0]}</div><div>${n}</div></div>`).join("")}
+function addStory(){let t=prompt("Story text लिखें");if(!t)return;db.stories.unshift({text:t,time:Date.now()});save();renderStories();toast("Story added")}
+function viewStory(n){showModal(`<h2>${esc(n)} की Story</h2><div class="card" style="margin-top:10px">✨ PulseChat Story<br><br><span class="muted">Demo story viewer</span></div>`)}
+function renderNotifications(){let n=db.notifications||[];document.getElementById("notificationsList").innerHTML=n.length?n.slice(0,30).map(x=>`<div class="user"><span>🔔</span><div>${esc(x.text)}<div class="muted">${esc(x.time)}</div></div></div>`).join(""):'<div class="muted">कोई नई notification नहीं।</div>'}
+function renderProfile(){
+  document.getElementById("profileName").textContent=db.user.name||"User";
+  document.getElementById("profileEmail").textContent=db.user.email||"";
+  document.getElementById("profileAvatar").textContent=(db.user.name||"U")[0].toUpperCase();
+  document.getElementById("newName").value=db.user.name||"";
+  const photo=document.getElementById("profilePhoto"),avatar=document.getElementById("profileAvatar");
+  if(db.user.photo){photo.src=db.user.photo;photo.style.display="block";avatar.style.display="none"}else{photo.style.display="none";avatar.style.display="flex"}
+}
+async function saveProfilePhoto(input){
+  const file=input.files&&input.files[0];if(!file)return;
+  if(!file.type.startsWith("image/")){toast("Image file चुनें");return}
+  try{
+    const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=reject;reader.onload=()=>{const img=new Image();img.onload=()=>{const canvas=document.createElement("canvas");const max=320;const scale=Math.min(1,max/Math.max(img.width,img.height));canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);canvas.getContext("2d").drawImage(img,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL("image/jpeg",0.72))};img.onerror=reject;img.src=reader.result};reader.readAsDataURL(file)});
+    db.user.photo=data;save();
+    if(auth.currentUser)await fs.collection("users").doc(auth.currentUser.uid).set({photo:data,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    renderProfile();toast("Profile photo सेव हो गई 📷");
+  }catch(e){toast("Photo save नहीं हुई: "+(e.message||"error"))}
+}
+function renderMyPosts(){
+  const box=document.getElementById("myPosts");
+  if(!box)return;
+  const uid=auth.currentUser?.uid||db.user.uid||"";
+  const posts=(db.posts||[]).filter(p=>uid&&p.uid===uid);
+  if(!posts.length){box.innerHTML='<p class="muted">अभी आपकी कोई पोस्ट नहीं है।</p>';return;}
+  box.innerHTML=posts.map(p=>`<div class="post">${p.img?(p.mediaType==="video"?`<video controls playsinline src="${p.img}" style="width:100%;max-height:300px;border-radius:12px"></video>`:`<img src="${p.img}" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px">`):""}<div class="post-text">${esc(p.text||"")}</div><div class="muted">${esc(p.time||"")} · ${p.privacy==="private"?"🔒 Private":"🌍 Public"}</div><div>❤️ ${p.likes||0} Likes · 💬 ${(p.comments||[]).length} Comments</div></div>`).join("");
+}
+async function saveProfile(){let n=document.getElementById("newName").value.trim();if(!n)return;db.user.name=n;save();try{if(auth.currentUser)await fs.collection("users").doc(auth.currentUser.uid).set({name:n,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}catch(e){toast("नाम local save हुआ, cloud update नहीं हुआ")}refresh();toast("Profile updated")}
+function toggleDark(){document.body.classList.toggle("dark");let on=document.body.classList.contains("dark");localStorage.setItem("pulse_dark",on?"1":"0");document.getElementById("darkSwitch").classList.toggle("on",on)}
+function toggleSetting(b){b.classList.toggle("on");toast("Setting updated")}
+async function startCamera(){try{stopCamera();stream=await navigator.mediaDevices.getUserMedia({video:true,audio:true});document.getElementById("localVideo").srcObject=stream;document.getElementById("callStatus").textContent="Camera active • Demo mode"}catch(e){document.getElementById("callStatus").textContent="Camera permission नहीं मिली";toast("Camera permission दें")}}
+function stopCamera(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}let v=document.getElementById("localVideo");if(v)v.srcObject=null}
+function toggleMic(){if(!stream)return;let a=stream.getAudioTracks()[0];a.enabled=!a.enabled;toast(a.enabled?"Mic ON":"Mic OFF")}
+function showModal(c){document.getElementById("modalContent").innerHTML=c;document.getElementById("modal").classList.add("show")}
+function closeModal(){document.getElementById("modal").classList.remove("show")}
+auth.onAuthStateChanged(async user=>{
+  if(user){
+    try{const snap=await fs.collection("users").doc(user.uid).get();if(snap.exists){db.user={...db.user,...snap.data(),uid:user.uid,email:user.email||db.user.email};save()}}catch(e){}
+    document.getElementById("loginScreen").style.display="none";document.getElementById("app").style.display="block";refresh();await loadCloudPosts();
+  }
+});
+if(localStorage.getItem(KEY) && !auth.currentUser){document.getElementById("loginScreen").style.display="flex";}
+</script>
+</body>
+</html>
