@@ -40,7 +40,8 @@ video{width:100%;background:#05070b;border-radius:18px;max-height:60vh;object-fi
 <body>
 <div id="loginScreen" class="login"><div class="login-box">
 <img src="pulsechat-logo.png" class="login-logo"><h1>PulseChat</h1><p>Connect. Chat. Share.</p>
-<input id="loginName" placeholder="आपका नाम (Sign Up के लिए)" value="Deepak" autocomplete="name">
+<input id="loginName" placeholder="आपका नाम (Sign Up के लिए)"     <input id="loginName" placeholder="आपका नाम (Sign Up के लिए)" autocomplete="name">
+  autocomplete="name">
 <input id="loginEmail" type="email" placeholder="Email address" autocomplete="email">
 <input id="loginPassword" type="password" placeholder="Password (कम से कम 6 अक्षर)" autocomplete="current-password">
   <input id="loginPhone" type="tel" placeholder="Mobile Number (+91...)" autocomplete="tel" style="margin-top:8px">
@@ -65,7 +66,7 @@ video{width:100%;background:#05070b;border-radius:18px;max-height:60vh;object-fi
 <section id="home" class="page active">
 <div class="welcome"><h1>Welcome to PulseChat 👋</h1><p>Chat, share, follow और connect करें।</p></div>
 <div class="card"><b>Stories</b><div id="stories" class="story-row"></div></div>
-<div class="card"><div class="row"><div id="homeAvatar" class="avatar">D</div><b id="homeName">Deepak</b><div class="spacer"></div></div>
+<div class="card"><div class="row"><div id="homeAvatar" class="avatar">U</div><b id="homeName">User</b><div class="spacer"></div></div>
 <textarea id="postText" placeholder="आप क्या सोच रहे हैं?"></textarea>
 <div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap"><label class="btn soft">📷 Photo / Reel <input id="postImage" type="file" accept="image/*,video/*" hidden onchange="previewPostImage(this)"></label><select id="postPrivacy" aria-label="Post privacy" style="max-width:145px"><option value="public">🌍 Public</option><option value="private">🔒 Private</option></select><div class="spacer"></div><button class="btn primary" onclick="createPost()">Post</button></div>
 <div id="imagePreview"></div></div><div id="feed"></div>
