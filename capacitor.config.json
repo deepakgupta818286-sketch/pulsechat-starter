@@ -1,0 +1,6 @@
+{
+  "appId": "com.pulsechat.app",
+  "appName": "PulseChat",
+  "webDir": ".",
+  "bundledWebRuntime": false
+}

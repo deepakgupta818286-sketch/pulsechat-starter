@@ -1,0 +1,9 @@
+{
+  "name": "pulsechat-starter",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PulseChat frontend starter project",
+  "scripts": {"start": "npx serve ."},
+  "dependencies": {},
+  "devDependencies": {}
+}
