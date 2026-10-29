@@ -151,9 +151,9 @@ async function forgotPassword(){
   }
 }
   
-  let confirmationResult = null;
+let confirmationResult = null;
+let isOtpPending = false;
 
-// Invisible reCAPTCHA सेटअप
 function setupRecaptcha() {
   if (!window.recaptchaVerifier) {
     window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
@@ -166,41 +166,42 @@ async function login() {
   const email = document.getElementById("loginEmail").value.trim();
   const password = document.getElementById("loginPassword").value;
   let phone = document.getElementById("loginPhone").value.trim();
-  if (phone && !phone.startsWith("+")) {
-  phone = "+91" + phone;
-  }
-  
   const otp = document.getElementById("loginOtp").value.trim();
+
+  if (phone && !phone.startsWith("+")) {
+    phone = "+91" + phone;
+  }
 
   if (!email || !password) {
     toast("Email और Password भरें");
     return;
   }
 
-  // अगर OTP अभी नहीं भेजा गया है, तो पहले Password चेक करें और Phone OTP भेजें
+  // Step 1: अगर OTP अभी नहीं भेजा गया है
   if (!confirmationResult) {
     if (!phone) {
-      toast("OTP के लिए अपना Mobile Number (+91...) भरें");
+      toast("OTP के लिए Mobile Number भरें");
       return;
     }
     try {
-      // 1. ईमेल और पासवर्ड की जाँच
+      isOtpPending = true; // होम स्क्रीन को सीधे खुलने से रोकने के लिए
+
       const cred = await auth.signInWithEmailAndPassword(email, password);
 
       if (!cred.user.emailVerified) {
         await auth.signOut();
+        isOtpPending = false;
         toast("पहले अपना Email Verify करें! इनबॉक्स में लिंक चेक करें।");
         return;
       }
 
-      // 2. Mobile पर OTP भेजें
       setupRecaptcha();
       confirmationResult = await auth.signInWithPhoneNumber(phone, window.recaptchaVerifier);
-      
-      // OTP इनपुट बॉक्स दिखाएँ
+
       document.getElementById("otpSection").style.display = "block";
       toast("Mobile पर OTP भेजा गया है 📲");
     } catch (e) {
+      isOtpPending = false;
       toast(authError(e));
       if (window.recaptchaVerifier) {
         window.recaptchaVerifier.render().then(widgetId => grecaptcha.reset(widgetId));
@@ -209,7 +210,7 @@ async function login() {
     return;
   }
 
-  // 3. अगर OTP भेजा जा चुका है, तो OTP सत्यापित करें
+  // Step 2: OTP वेरिफाई करें
   if (!otp) {
     toast("कृपया 6-अक्षर का OTP भरें");
     return;
@@ -217,8 +218,8 @@ async function login() {
 
   try {
     await confirmationResult.confirm(otp);
-    
-    // सफल लॉगिन के बाद डेटा लोड करें
+    isOtpPending = false;
+
     const user = auth.currentUser;
     const snap = await fs.collection("users").doc(user.uid).get();
     const data = snap.exists ? snap.data() : {};
@@ -230,58 +231,97 @@ async function login() {
     refresh();
     toast("OTP सत्यापित! स्वागत है ✅");
   } catch (e) {
-    toast("गलत OTP! कृपया पुनः प्रयास करें।");
+    toast("गलत OTP! पुनः प्रयास करें।");
   }
 }
   
   
+  
+let signupConfirmationResult = null;
+
 async function signup(){
-  const name=document.getElementById("loginName").value.trim();
-  const email=document.getElementById("loginEmail").value.trim();
-  const password=document.getElementById("loginPassword").value;
-  if(!name){toast("Sign Up के लिए अपना नाम भरें");return}
-  if(!email||!password){toast("Email और Password भरें");return}
-  if(password.length<6){toast("Password कम से कम 6 अक्षर का रखें");return}
-  try{
-    const cred=await auth.createUserWithEmailAndPassword(email,password);
-    
-    // 1. यूज़र को वेरिफिकेशन ईमेल भेजें
+  const name = document.getElementById("loginName").value.trim();
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  let phone = document.getElementById("loginPhone").value.trim();
+  const otp = document.getElementById("loginOtp").value.trim();
+
+  if(!name){ toast("Sign Up के लिए अपना नाम भरें"); return; }
+  if(!email || !password){ toast("Email और Password भरें"); return; }
+  if(password.length < 6){ toast("Password कम से कम 6 अक्षर का रखें"); return; }
+  if(!phone){ toast("OTP के लिए Mobile Number भरें"); return; }
+
+  // Phone number में +91 अपने-आप जोड़ें
+  if (phone && !phone.startsWith("+")) {
+    phone = "+91" + phone;
+  }
+
+  // Step 1: अगर OTP अभी नहीं भेजा गया है
+  if (!signupConfirmationResult) {
+    try {
+      setupRecaptcha();
+      signupConfirmationResult = await auth.signInWithPhoneNumber(phone, window.recaptchaVerifier);
+      document.getElementById("otpSection").style.display = "block";
+      toast("Sign-up के लिए Mobile पर OTP भेजा गया है 📲");
+    } catch (e) {
+      toast(authError(e));
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.render().then(widgetId => grecaptcha.reset(widgetId));
+      }
+    }
+    return;
+  }
+
+  // Step 2: OTP वेरिफाई करके अकाउंट बनाएँ
+  if (!otp) {
+    toast("कृपया 6-अक्षर का OTP भरें");
+    return;
+  }
+
+  try {
+    await signupConfirmationResult.confirm(otp);
+
+    const cred = await auth.createUserWithEmailAndPassword(email, password);
     await cred.user.sendEmailVerification();
-    
-    // 2. Firestore में प्रोफ़ाइल सेव करें
+
     await fs.collection("users").doc(cred.user.uid).set({
       name,
       email,
-      photo:"",
-      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+      phone,
+      photo: "",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    
-    // 3. वेरिफिकेशन से पहले सीधे ऐप में जाने से रोकें
+
     await auth.signOut();
-    toast("खाता बन गया! अपना Email खोलकर Verify करें 📩");
-  }catch(e){toast(authError(e))}
+    signupConfirmationResult = null;
+    toast("खाता बन गया! इनबॉक्स से Email Verify करके login करें 📩");
+    document.getElementById("otpSection").style.display = "none";
+  } catch (e) {
+    toast("Sign-up में समस्या: " + authError(e));
+  }
 }
-// सुरक्षित सेशन हैंडलिंग (बिना OTP पूरा हुए ऐप में न जाने दें)
+  
+// सुरक्षित सेशन हैंडलिंग
 auth.onAuthStateChanged(async (user) => {
-  if (user && confirmationResult) {
-    if (user.emailVerified) {
-      const snap = await fs.collection("users").doc(user.uid).get();
-      const data = snap.exists ? snap.data() : {};
-      db.user = { ...db.user, ...data, uid: user.uid, email: user.email, name: data.name || "User" };
-      save();
-      document.getElementById("loginScreen").style.display = "none";
-      document.getElementById("app").style.display = "block";
-      refresh();
-    } else {
-      await auth.signOut();
-      document.getElementById("loginScreen").style.display = "flex";
-      document.getElementById("app").style.display = "none";
-    }
+  // अगर OTP प्रोसेस चल रहा है, तो सीधा ऐप न खोलें
+  if (isOtpPending) {
+    return;
+  }
+
+  if (user && user.emailVerified && !confirmationResult) {
+    const snap = await fs.collection("users").doc(user.uid).get();
+    const data = snap.exists ? snap.data() : {};
+    db.user = { ...db.user, ...data, uid: user.uid, email: user.email, name: data.name || "User" };
+    save();
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    refresh();
   } else {
     document.getElementById("loginScreen").style.display = "flex";
     document.getElementById("app").style.display = "none";
   }
 });
+  
   
   
 function authError(e){const m={"auth/email-already-in-use":"यह Email पहले से registered है। Login करें।","auth/invalid-email":"Email सही नहीं है।","auth/weak-password":"Password थोड़ा मजबूत रखें (कम से कम 6 अक्षर)।","auth/invalid-credential":"Email या Password गलत है।","auth/user-not-found":"अकाउंट नहीं मिला। पहले Sign Up करें।","auth/network-request-failed":"Internet connection जाँचें।","auth/operation-not-allowed":"Firebase Console में Email/Password sign-in चालू करें।"};return m[e.code]||("Firebase error: "+(e.message||e.code||"unknown"))}
