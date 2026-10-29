@@ -601,7 +601,8 @@ const rtcConfig = {
 };
 
 // 1. Camera & Mic Start Karna
-async function startCamera() {
+async function startRandomVideo() {
+  
   try {
     stopCamera();
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
