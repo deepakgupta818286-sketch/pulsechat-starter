@@ -329,25 +329,220 @@ async function logout(){stopCamera();try{await auth.signOut()}catch(e){}localSto
 function openPage(id,btn){stopCameraIfNeeded(id);document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));document.getElementById(id).classList.add("active");document.querySelectorAll(".nav-btn").forEach(x=>x.classList.remove("active"));if(btn)btn.classList.add("active");if(id==="home")renderFeed();if(id==="people")renderUsers();if(id==="chats")renderChats();if(id==="profile"){renderProfile();renderMyPosts()}if(id==="notifications")renderNotifications();if(id==="randomVideo")document.getElementById("callStatus").textContent="Camera शुरू करने के लिए Start दबाएँ"}
 function stopCameraIfNeeded(id){if(id!=="randomVideo")stopCamera()}
 function refresh(){document.getElementById("homeName").textContent=db.user.name;document.getElementById("homeAvatar").textContent=db.user.name[0].toUpperCase();renderFeed();renderUsers();renderChats();renderProfile();renderMyPosts();renderStories();renderNotifications();if(localStorage.getItem("pulse_dark")==="1"){document.body.classList.add("dark");document.getElementById("darkSwitch").classList.add("on")}}
-function renderUsers(){let q=(document.getElementById("searchUsers")?.value||"").toLowerCase();document.getElementById("usersList").innerHTML=people.filter(p=>!db.blocked.includes(p.id)&&p.name.toLowerCase().includes(q)).map(p=>`<div class="user"><div class="avatar">${p.avatar}</div><div><b>${esc(p.name)}</b><div class="muted">${p.status}</div></div><div class="spacer"></div><button class="btn soft" onclick="openChat(${p.id})">Chat</button><button class="btn" onclick="personMenu(${p.id})">•••</button></div>`).join("")}
-function personMenu(id){let p=people.find(x=>x.id===id);showModal(`<h2>${esc(p.name)}</h2><button class="btn soft" style="width:100%;margin:6px 0" onclick="follow(${id})">${db.following.includes(id)?"Unfollow":"Follow"} ➕</button><button class="btn danger" style="width:100%;margin:6px 0" onclick="blockUser(${id})">🚫 Block</button><button class="btn" style="width:100%;margin:6px 0" onclick="reportUser(${id})">⚠️ Report</button>`)}
-function follow(id){if(db.following.includes(id))db.following=db.following.filter(x=>x!==id);else db.following.push(id);db.notifications.unshift({text:"आपने "+people.find(p=>p.id===id).name+" को follow किया",time:new Date().toLocaleString("hi-IN")});save();closeModal();toast("Follow status updated");renderNotifications()}
-function blockUser(id){db.blocked.push(id);save();closeModal();renderUsers();toast("User blocked")}
-function reportUser(id){db.notifications.unshift({text:"Report submit किया गया",time:new Date().toLocaleString("hi-IN")});save();closeModal();toast("Report submit हो गई")}
-function renderChats(){document.getElementById("chatList").innerHTML=people.filter(p=>!db.blocked.includes(p.id)).map(p=>{let m=db.chats[p.id]||[],last=m.length?m[m.length-1].text:"नई चैट शुरू करें";return `<div class="user" onclick="openChat(${p.id})"><div class="avatar">${p.avatar}</div><div><b>${esc(p.name)}</b><div class="muted">${esc(last)}</div></div><div class="spacer"></div>💬</div>`}).join("")}
-function openChat(id){currentChat=id;let p=people.find(x=>x.id===id);document.getElementById("chatUserName").textContent=p.name;openPage("chatRoom");renderMessages()}
-function renderMessages(){let c=document.getElementById("messages"),m=db.chats[currentChat]||[];c.innerHTML=m.map(x=>`<div class="message ${x.from==="me"?"me":"other"}">${x.type==="image"?`<img src="${x.text}" style="max-width:100%;border-radius:10px">`:esc(x.text)}</div>`).join("");c.scrollTop=c.scrollHeight}
-function sendMessage(){let i=document.getElementById("messageInput"),t=i.value.trim();if(!t||currentChat==null)return;db.chats[currentChat]??=[];db.chats[currentChat].push({from:"me",text:t});i.value="";save();renderMessages();renderChats();setTimeout(()=>{db.chats[currentChat].push({from:"other",text:"Thanks for your message 😊"});db.notifications.unshift({text:"नया message आया",time:new Date().toLocaleString("hi-IN")});save();renderMessages();renderChats();renderNotifications()},700)}
-function sendImage(input){let f=input.files[0];if(!f||currentChat==null)return;let r=new FileReader();r.onload=()=>{db.chats[currentChat].push({from:"me",type:"image",text:r.result});save();renderMessages()};r.readAsDataURL(f)}
+// 1. Real Registered Users ko Firestore se load karna
+async function renderUsers(){
+  const container = document.getElementById("searchUsers");
+  if(!container) return;
+  container.innerHTML = "<p style='padding:12px;color:#888;'>Loading users...</p>";
+
+  try {
+    const snap = await fs.collection("users").get();
+    container.innerHTML = "";
+    
+    snap.forEach(doc => {
+      const u = doc.data();
+      if(auth.currentUser && doc.id !== auth.currentUser.uid){
+        container.innerHTML += `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;border-bottom:1px solid #eee;">
+            <div>
+              <b style="font-size:15px;">${u.name || 'PulseChat User'}</b><br>
+              <small style="color:#777;">${u.email || ''}</small>
+            </div>
+            <button onclick="openChat('${doc.id}', '${u.name || 'User'}')" style="padding:6px 14px;background:#007bff;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:bold;">Chat</button>
+          </div>
+        `;
+      }
+    });
+  } catch(e) {
+    container.innerHTML = "<p style='padding:12px;color:red;'>Users load nahi ho paye: " + e.message + "</p>";
+  }
+}
+
+// 2. Real Chat Window kholna
+let currentChatListener = null;
+function openChat(otherUid, otherName){
+  currentChat = otherUid;
+  const header = document.getElementById("chatWithUser");
+  if(header) header.innerText = otherName;
+  openPage('chatWindow');
+  listenMessages(otherUid);
+}
+
+// 3. Firestore se Real-time Live Messages sunna
+function listenMessages(otherUid){
+  if(currentChatListener) currentChatListener();
+
+  const myUid = auth.currentUser.uid;
+  const chatId = [myUid, otherUid].sort().join("_");
+
+  currentChatListener = fs.collection("chats")
+    .doc(chatId)
+    .collection("messages")
+    .orderBy("timestamp", "asc")
+    .onSnapshot(snap => {
+      const box = document.getElementById("messages");
+      if(!box) return;
+      box.innerHTML = "";
+      
+      snap.forEach(doc => {
+        const m = doc.data();
+        const isMe = m.senderId === myUid;
+        box.innerHTML += `
+          <div style="margin:8px 0;display:flex;justify-content:${isMe ? 'flex-end' : 'flex-start'};">
+            <span style="background:${isMe ? '#007bff' : '#f0f2f5'};color:${isMe ? '#fff' : '#000'};padding:8px 14px;border-radius:14px;max-width:75%;word-break:break-word;">
+              ${m.text}
+            </span>
+          </div>
+        `;
+      });
+      box.scrollTop = box.scrollHeight;
+    });
+}
+
+// 4. Real Message Database me Send karna
+async function sendMessage(){
+  const input = document.getElementById("messageInput");
+  const text = input.value.trim();
+  if(!text || !currentChat || !auth.currentUser) return;
+
+  const myUid = auth.currentUser.uid;
+  const chatId = [myUid, currentChat].sort().join("_");
+  input.value = "";
+
+  try {
+    await fs.collection("chats").doc(chatId).collection("messages").add({
+      text: text,
+      senderId: myUid,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch(e) {
+    toast("Message bhejne me error: " + e.message);
+  }
+}
+  function sendImage(input){let f=input.files[0];if(!f||currentChat==null)return;let r=new FileReader();r.onload=()=>{db.chats[currentChat].push({from:"me",type:"image",text:r.result});save();renderMessages()};r.readAsDataURL(f)}
 function recordVoice(){if(!navigator.mediaDevices?.getUserMedia){toast("Voice recording supported नहीं है");return}if(recorder?.state==="recording"){recorder.stop();toast("Voice recording stopped");return}navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{chunks=[];recorder=new MediaRecorder(s);recorder.ondataavailable=e=>chunks.push(e.data);recorder.onstop=()=>{s.getTracks().forEach(t=>t.stop());db.chats[currentChat].push({from:"me",text:"🎤 Voice message (demo)"});save();renderMessages()};recorder.start();toast("Recording शुरू... फिर 🎤 दबाएँ")}).catch(()=>toast("Microphone permission दें"))}
 function previewPostImage(input){let f=input.files[0];if(!f)return;const isVideo=f.type.startsWith("video/");if(!f.type.startsWith("image/")&&!isVideo){toast("Photo या video चुनें");return}if(f.size>8*1024*1024){toast("Demo version में 8MB से छोटी file चुनें");input.value="";return}let r=new FileReader();r.onload=()=>{postImg=r.result;window.postMediaType=isVideo?"video":"image";document.getElementById("imagePreview").innerHTML=isVideo?`<video controls playsinline src="${r.result}" style="width:100%;max-height:220px;border-radius:14px;margin-top:10px"></video>`:`<img src="${r.result}" style="width:100%;max-height:220px;object-fit:cover;border-radius:14px;margin-top:10px">`};r.readAsDataURL(f)}
-async function createPost(){let i=document.getElementById("postText"),t=i.value.trim();if(!t&&!postImg){toast("कुछ लिखें या photo/video चुनें");return}const user=auth.currentUser;if(!user){toast("पहले Login करें");return}let post={id:Date.now(),text:t,img:postImg,mediaType:window.postMediaType||"image",privacy:document.getElementById("postPrivacy").value||"public",time:new Date().toLocaleString("hi-IN"),createdAt:firebase.firestore.FieldValue.serverTimestamp(),likes:0,liked:false,comments:[],uid:user.uid,userName:db.user.name||user.email};try{await fs.collection("posts").doc(String(post.id)).set(post);db.posts.unshift({...post,createdAt:null});i.value="";postImg="";window.postMediaType="image";document.getElementById("postImage").value="";document.getElementById("postPrivacy").value="public";document.getElementById("imagePreview").innerHTML="";save();renderFeed();renderMyPosts();toast("Post Firebase में publish हो गई ❤️")}catch(e){toast("Firebase में post सेव नहीं हुई। Firestore Rules जाँचें")}}
-async function loadCloudPosts(){if(!auth.currentUser)return;try{const snap=await fs.collection("posts").orderBy("id","desc").limit(100).get();const cloud=snap.docs.map(d=>({...d.data(),id:d.data().id||Number(d.id)}));const own=cloud.filter(p=>p.uid===auth.currentUser.uid);const publicPosts=cloud.filter(p=>p.privacy!=="private");const merged=[...own,...publicPosts.filter(p=>p.uid!==auth.currentUser.uid)];const unique=new Map(merged.map(p=>[String(p.id),p]));db.posts=[...unique.values()].sort((a,b)=>(Number(b.id)||0)-(Number(a.id)||0));save();renderFeed();renderMyPosts()}catch(e){console.warn("Could not load cloud posts",e)}}
-function renderFeed(){let f=document.getElementById("feed");let uid=auth.currentUser?.uid||db.user.uid||"";let visible=(db.posts||[]).filter(p=>p.privacy!=="private"||p.uid===uid);if(!visible.length){f.innerHTML='<div class="card muted">अभी कोई Public post नहीं है। पहली post आप करें ❤️</div>';return}f.innerHTML=visible.map(p=>`<div class="post"><div class="row"><div class="avatar">${esc((p.userName||db.user.name||"U")[0].toUpperCase())}</div><div><b>${esc(p.userName||db.user.name||"User")}</b><div class="muted">${esc(p.time||"")} · ${p.privacy==="private"?"🔒 Private":"🌍 Public"}</div></div></div>${p.img?(p.mediaType==="video"?`<video controls playsinline src="${p.img}" style="width:100%;max-height:420px;border-radius:14px;margin-top:12px"></video>`:`<img src="${p.img}" style="width:100%;max-height:350px;object-fit:cover;border-radius:14px;margin-top:12px">`):""}<div class="post-text">${esc(p.text||"")}</div><div class="post-actions"><button onclick="likePost(${p.id})">${p.liked?"❤️":"🤍"} ${p.likes||0}</button><button onclick="commentPost(${p.id})">💬 ${(p.comments||[]).length}</button><button onclick="sharePost(${p.id})">↗️ Share</button></div></div>`).join("")}
-function likePost(id){let p=db.posts.find(x=>x.id===id);p.liked=!p.liked;p.likes+=p.liked?1:-1;save();renderFeed()}
-function commentPost(id){let t=prompt("Comment लिखें");if(!t)return;db.posts.find(x=>x.id===id).comments.push({name:db.user.name,text:t});save();renderFeed();toast("Comment added")}
-function sharePost(id){let p=db.posts.find(x=>x.id===id);if(navigator.share)navigator.share({title:"PulseChat",text:p.text||"PulseChat post"});else{navigator.clipboard?.writeText(p.text||"PulseChat post");toast("Share text copied")}}
-function renderStories(){let names=["Your Story","Amit","Priya","Neha","Rahul","Anjali"];document.getElementById("stories").innerHTML=names.map((n,i)=>`<div class="story" onclick="${i===0?"addStory()":"viewStory('"+n+"')"}"><div class="avatar">${n[0]}</div><div>${n}</div></div>`).join("")}
+// Real Post Create Karna
+async function createPost() {
+  const input = document.getElementById("postText");
+  const text = input ? input.value.trim() : "";
+  if (!text || !auth.currentUser) return;
+
+  try {
+    await fs.collection("posts").add({
+      text: text,
+      uid: auth.currentUser.uid,
+      userName: (db.user && db.user.name) ? db.user.name : "PulseChat User",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      likes: []
+    });
+    input.value = "";
+    toast("Post share ho gaya! ✨");
+  } catch (e) {
+    toast("Post upload error: " + e.message);
+  }
+}
+
+// Live Real-Time Feed Listen Karna
+function renderFeed() {
+  const feed = document.getElementById("feed");
+  if (!feed) return;
+
+  fs.collection("posts")
+    .orderBy("createdAt", "desc")
+    .onSnapshot(snap => {
+      feed.innerHTML = "";
+      if (snap.empty) {
+        feed.innerHTML = "<p style='padding:20px;text-align:center;color:#888;'>Abhi koi post nahi hai.</p>";
+        return;
+      }
+      snap.forEach(doc => {
+        const p = doc.data();
+                  feed.innerHTML += `
+            <div class="card" style="padding:15px; margin-bottom:12px; border-radius:12px; background:#fff; border:1px solid #eee; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
+              <div style="font-weight:bold; font-size:15px; margin-bottom:6px;">${p.userName || 'PulseChat User'}</div>
+              <p style="margin:8px 0; font-size:14px; color:#333;">${p.text}</p>
+              <div style="display:flex; gap:12px; margin-top:10px; align-items:center;">
+                <button onclick="likePost('${doc.id}')" style="background:none; border:none; cursor:pointer; font-size:14px;">
+                  ❤️ ${(p.likes || []).length}
+                </button>
+                <button onclick="commentPost('${doc.id}')" style="background:none; border:none; cursor:pointer; font-size:14px;">
+                  💬 Comment
+                </button>
+                <button onclick="sharePost('${p.text}')" style="background:none; border:none; cursor:pointer; font-size:14px;">
+                  🔗 Share
+                </button>
+              </div>
+            </div>
+          `;
+        
+      });
+    });
+}
+  // Real Like Function (Firestore)
+async function likePost(postId) {
+  if (!auth.currentUser) return toast("Pehle login karein!");
+  const myUid = auth.currentUser.uid;
+  const postRef = fs.collection("posts").doc(postId);
+
+  try {
+    const doc = await postRef.get();
+    if (!doc.exists) return;
+
+    const data = doc.data();
+    let likes = data.likes || [];
+
+    if (likes.includes(myUid)) {
+      await postRef.update({
+        likes: firebase.firestore.FieldValue.arrayRemove(myUid)
+      });
+      toast("Unliked");
+    } else {
+      await postRef.update({
+        likes: firebase.firestore.FieldValue.arrayUnion(myUid)
+      });
+      toast("Liked ❤️");
+    }
+  } catch (err) {
+    toast("Like error: " + err.message);
+  }
+}
+
+// Real Comment Function (Firestore)
+async function commentPost(postId) {
+  if (!auth.currentUser) return toast("Pehle login karein!");
+  const commentText = prompt("Apna comment likhein:");
+  if (!commentText || !commentText.trim()) return;
+
+  const myName = (db.user && db.user.name) ? db.user.name : "User";
+
+  try {
+    await fs.collection("posts").doc(postId).collection("comments").add({
+      text: commentText.trim(),
+      userName: myName,
+      uid: auth.currentUser.uid,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    toast("Comment post ho gaya! 💬");
+  } catch (err) {
+    toast("Comment error: " + err.message);
+  }
+}
+
+// Real Share Function
+function sharePost(text) {
+  if (navigator.share) {
+    navigator.share({
+      title: "PulseChat Post",
+      text: text || "PulseChat par ye post dekhein!",
+      url: window.location.href
+    }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(window.location.href);
+    toast("Post link copy ho gaya! 📋");
+  }
+}
+  function renderStories(){let names=["Your Story","Amit","Priya","Neha","Rahul","Anjali"];document.getElementById("stories").innerHTML=names.map((n,i)=>`<div class="story" onclick="${i===0?"addStory()":"viewStory('"+n+"')"}"><div class="avatar">${n[0]}</div><div>${n}</div></div>`).join("")}
 function addStory(){let t=prompt("Story text लिखें");if(!t)return;db.stories.unshift({text:t,time:Date.now()});save();renderStories();toast("Story added")}
 function viewStory(n){showModal(`<h2>${esc(n)} की Story</h2><div class="card" style="margin-top:10px">✨ PulseChat Story<br><br><span class="muted">Demo story viewer</span></div>`)}
 function renderNotifications(){let n=db.notifications||[];document.getElementById("notificationsList").innerHTML=n.length?n.slice(0,30).map(x=>`<div class="user"><span>🔔</span><div>${esc(x.text)}<div class="muted">${esc(x.time)}</div></div></div>`).join(""):'<div class="muted">कोई नई notification नहीं।</div>'}
@@ -380,10 +575,176 @@ function renderMyPosts(){
 async function saveProfile(){let n=document.getElementById("newName").value.trim();if(!n)return;db.user.name=n;save();try{if(auth.currentUser)await fs.collection("users").doc(auth.currentUser.uid).set({name:n,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}catch(e){toast("नाम local save हुआ, cloud update नहीं हुआ")}refresh();toast("Profile updated")}
 function toggleDark(){document.body.classList.toggle("dark");let on=document.body.classList.contains("dark");localStorage.setItem("pulse_dark",on?"1":"0");document.getElementById("darkSwitch").classList.toggle("on",on)}
 function toggleSetting(b){b.classList.toggle("on");toast("Setting updated")}
-async function startCamera(){try{stopCamera();stream=await navigator.mediaDevices.getUserMedia({video:true,audio:true});document.getElementById("localVideo").srcObject=stream;document.getElementById("callStatus").textContent="Camera active • Demo mode"}catch(e){document.getElementById("callStatus").textContent="Camera permission नहीं मिली";toast("Camera permission दें")}}
-function stopCamera(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}let v=document.getElementById("localVideo");if(v)v.srcObject=null}
-function toggleMic(){if(!stream)return;let a=stream.getAudioTracks()[0];a.enabled=!a.enabled;toast(a.enabled?"Mic ON":"Mic OFF")}
-function showModal(c){document.getElementById("modalContent").innerHTML=c;document.getElementById("modal").classList.add("show")}
+// WebRTC Variables
+let localStream = null;
+let peerConnection = null;
+let currentCallDoc = null;
+
+const rtcConfig = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' }
+  ]
+};
+
+// 1. Camera & Mic Start Karna
+async function startCamera() {
+  try {
+    stopCamera();
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    
+    const myVid = document.getElementById("localVideo") || document.getElementById("myVideo");
+    if (myVid) {
+      myVid.srcObject = localStream;
+      myVid.play();
+    }
+    toast("Camera chalu! Match dhoondha ja raha hai...");
+    findRandomMatch();
+  } catch (err) {
+    toast("Camera access error: " + err.message);
+  }
+}
+
+// 2. Random User Matching & Signaling
+async function findRandomMatch() {
+  if (!auth.currentUser || !localStream) return;
+  const myUid = auth.currentUser.uid;
+  peerConnection = new RTCPeerConnection(rtcConfig);
+
+  localStream.getTracks().forEach(track => {
+    peerConnection.addTrack(track, localStream);
+  });
+
+  peerConnection.ontrack = (event) => {
+    const remoteVid = document.getElementById("remoteVideo") || document.getElementById("otherVideo");
+    if (remoteVid && event.streams[0]) {
+      remoteVid.srcObject = event.streams[0];
+      remoteVid.play();
+      toast("User connect ho gaya! 🎥");
+    }
+  };
+
+  const roomsRef = fs.collection("videoRooms");
+  const openRooms = await roomsRef.where("status", "==", "waiting").limit(1).get();
+
+  if (!openRooms.empty) {
+    // Joiner Call Connect Karega
+    const roomDoc = openRooms.docs[0];
+    currentCallDoc = roomDoc.ref;
+    const roomData = roomDoc.data();
+
+    peerConnection.onicecandidate = (event) => {
+      if (event.candidate) {
+        currentCallDoc.collection("calleeCandidates").add(event.candidate.toJSON());
+      }
+    };
+
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(roomData.offer));
+    const answer = await peerConnection.createAnswer();
+    await peerConnection.setLocalDescription(answer);
+
+    await currentCallDoc.update({
+      answer: { type: answer.type, sdp: answer.sdp },
+      status: "connected"
+    });
+
+    currentCallDoc.collection("callerCandidates").onSnapshot(snap => {
+      snap.docChanges().forEach(change => {
+        if (change.type === "added") {
+          peerConnection.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+        }
+      });
+    });
+
+  } else {
+    // Host Naya Room Banayega
+    currentCallDoc = roomsRef.doc();
+
+    peerConnection.onicecandidate = (event) => {
+      if (event.candidate) {
+        currentCallDoc.collection("callerCandidates").add(event.candidate.toJSON());
+      }
+    };
+
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+
+    await currentCallDoc.set({
+      offer: { type: offer.type, sdp: offer.sdp },
+      host: myUid,
+      status: "waiting",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    currentCallDoc.onSnapshot(snap => {
+      const data = snap.data();
+      if (!peerConnection.currentRemoteDescription && data && data.answer) {
+        const answer = new RTCSessionDescription(data.answer);
+        peerConnection.setRemoteDescription(answer);
+      }
+    });
+
+    currentCallDoc.collection("calleeCandidates").onSnapshot(snap => {
+      snap.docChanges().forEach(change => {
+        if (change.type === "added") {
+          peerConnection.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+        }
+      });
+    });
+  }
+}
+
+// 3. Omegle Style NEXT Button Function
+async function nextUser() {
+  toast("Agla user dhoonda ja raha hai... ⏭️");
+  
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+  if (currentCallDoc) {
+    await currentCallDoc.delete().catch(() => {});
+    currentCallDoc = null;
+  }
+
+  const remoteVid = document.getElementById("remoteVideo") || document.getElementById("otherVideo");
+  if (remoteVid) remoteVid.srcObject = null;
+
+  findRandomMatch();
+}
+
+// 4. Call Disconnect & Camera Stop
+function stopCamera() {
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+    localStream = null;
+  }
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+  if (currentCallDoc) {
+    currentCallDoc.delete().catch(() => {});
+    currentCallDoc = null;
+  }
+  const myVid = document.getElementById("localVideo") || document.getElementById("myVideo");
+  const remoteVid = document.getElementById("remoteVideo") || document.getElementById("otherVideo");
+  if (myVid) myVid.srcObject = null;
+  if (remoteVid) remoteVid.srcObject = null;
+  toast("Call band ho gayi.");
+}
+
+// 5. Mic On/Off Mute Toggle
+function toggleMic() {
+  if (localStream) {
+    const audioTrack = localStream.getAudioTracks()[0];
+    if (audioTrack) {
+      audioTrack.enabled = !audioTrack.enabled;
+      toast(audioTrack.enabled ? "Mic On 🎙️" : "Mic Mute 🔇");
+    }
+  }
+}
+  function showModal(c){document.getElementById("modalContent").innerHTML=c;document.getElementById("modal").classList.add("show")}
 function closeModal(){document.getElementById("modal").classList.remove("show")}
 auth.onAuthStateChanged(async user=>{
   if(user){
@@ -392,6 +753,19 @@ auth.onAuthStateChanged(async user=>{
   }
 });
 if(localStorage.getItem(KEY) && !auth.currentUser){document.getElementById("loginScreen").style.display="flex";}
+  // User Online/Offline Status Logic
+function setOnlineStatus(isOnline) {
+  if (auth.currentUser) {
+    fs.collection("users").doc(auth.currentUser.uid).update({
+      online: isOnline,
+      lastSeen: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(() => {});
+  }
+}
+
+// Browser tab band ya refresh hone par offline mark karein
+window.addEventListener("beforeunload", () => setOnlineStatus(false));
+  
 </script>
 </body>
 </html>
