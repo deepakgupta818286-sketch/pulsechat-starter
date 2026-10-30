@@ -38,6 +38,7 @@ video{width:100%;background:#05070b;border-radius:18px;max-height:60vh;object-fi
 </style>
   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   
+  
 </head>
 <body>
 <div id="loginScreen" class="login"><div class="login-box">
@@ -782,7 +783,7 @@ function setOnlineStatus(isOnline) {
 // Browser tab band ya refresh hone par offline mark karein
 window.addEventListener("beforeunload", () => setOnlineStatus(false));
   // --- EMAIL OTP AUTHENTICATION SYSTEM ---
-emailjs.init("YOUR_PUBLIC_KEY");
+//emailjs.init("YOUR_PUBLIC_KEY");
 
 let generatedOTP = null;
 let pendingUserData = null;
