@@ -450,7 +450,8 @@ function toggleSetting(b){b.classList.toggle("on");toast("Setting updated")}
 let localStream = null;
 let peerConnection = null;
 let currentCallDoc = null;
-
+let isCallConnected = false;
+  
 const rtcConfig = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
@@ -493,6 +494,8 @@ async function findRandomMatch() {
       remoteVid.srcObject = event.streams[0];
       remoteVid.play();
       toast("User connect ho gaya! 🎥");
+      isCallConnected = true;
+      
     }
   };
 
@@ -603,7 +606,12 @@ function stopCamera() {
   const remoteVid = document.getElementById("remoteVideo") || document.getElementById("otherVideo");
   if (myVid) myVid.srcObject = null;
   if (remoteVid) remoteVid.srcObject = null;
-  toast("Call band ho gayi.");
+  if (isCallConnected) {
+    toast("Call band ho gayi.");
+    isCallConnected = false;
+  }
+  
+  
 }
 
 // 5. Mic On/Off Mute Toggle
