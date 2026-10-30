@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#1677ff">
 <title>PulseChat V2</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  
 <style>
 *{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;background:#eef2f7;color:#172033}
 body.dark{background:#0b1220;color:#e5e7eb}.app{max-width:720px;margin:auto;min-height:100vh;background:#f8fafc}
@@ -1112,9 +1115,26 @@ function showPage(pageId) {
   }
 }
 
-/* ================= 100% REAL LIVE PUBLIC FEED & REAL USER ENGINE ================= */
+/* ================= 100% REAL FIREBASE CLOUD ENGINE ================= */
 
-// 1. Real Global Public Feed Engine
+// Initialize Firebase with Real Credentials
+const firebaseConfig = {
+  apiKey: "AIzaSyAwgk2ouRggHR-sM9NeN52zMT6LFMZ44iI",
+  authDomain: "pulsechat-bc35f.firebaseapp.com",
+  projectId: "pulsechat-bc35f",
+  storageBucket: "pulsechat-bc35f.firebasestorage.app",
+  messagingSenderId: "680301724013",
+  appId: "1:680301724013:web:dc4568e3a2f56e1c171a64",
+  measurementId: "G-561WBR4LWD",
+  databaseURL: "https://pulsechat-bc35f-default-rtdb.asia-southeast1.firebasedatabase.app"
+};
+
+if (typeof firebase !== "undefined" && !firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+const db = (typeof firebase !== "undefined") ? firebase.database() : null;
+
+// 1. Real Cloud Public Feed Engine
 function submitPublicPost() {
   const txtInput = document.getElementById("postText");
   const text = txtInput ? txtInput.value.trim() : "";
@@ -1124,62 +1144,71 @@ function submitPublicPost() {
   }
 
   const currentUser = JSON.parse(localStorage.getItem("pulsechat_user")) || {
-    name: "PulseChat Member",
-    handle: "user_" + Math.floor(1000 + Math.random() * 9000)
+    name: "Deepak Gupta",
+    handle: "@deepak_01"
   };
 
   const newPost = {
-    id: "post_" + Date.now(),
     author: currentUser.name,
     handle: currentUser.handle || "@user",
     text: text,
     likes: 0,
-    time: "Abhi"
+    timestamp: Date.now(),
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   };
 
-  // Sync to Global Public Feed Array
-  let globalPosts = JSON.parse(localStorage.getItem("pulse_global_feed")) || [];
-  globalPosts.unshift(newPost);
-  localStorage.setItem("pulse_global_feed", JSON.stringify(globalPosts));
-
-  txtInput.value = "";
-  renderFeed();
-  alert("Aapka post live share ho chuka hai! 🚀");
-}
-
-function renderFeed() {
-  const feed = document.getElementById("feed");
-  if (!feed) return;
-
-  const globalPosts = JSON.parse(localStorage.getItem("pulse_global_feed")) || [];
-  if (globalPosts.length === 0) {
-    feed.innerHTML = '<div style="text-align:center; color:#888; padding:30px 10px;">Abhi koi public post nahi hai. Pehle aap post kijiye!</div>';
-    return;
+  if (db) {
+    db.ref("public_feed").push(newPost, (err) => {
+      if (err) {
+        alert("Post sync nahi ho paaya: " + err.message);
+      } else {
+        txtInput.value = "";
+        alert("Aapka post globally publish ho chuka hai! 🚀");
+      }
+    });
+  } else {
+    alert("Database connection ready nahi hai!");
   }
-
-  feed.innerHTML = globalPosts.map(p => `
-    <div class="card" ondblclick="handleDoubleTapLike('${p.id}', event)" style="position:relative; margin:10px 0; padding:12px; background:#1c1c1e; border-radius:12px;">
-      <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
-        <div style="width:36px; height:36px; border-radius:50%; background:#007bff; display:flex; align-items:center; justify-content:center; font-weight:bold; color:#fff;">
-          ${(p.author || 'U')[0].toUpperCase()}
-        </div>
-        <div>
-          <div style="font-weight:bold; font-size:14px; color:#fff;">${p.author}</div>
-          <div style="font-size:11px; color:#888;">${p.handle || '@user'} • ${p.time}</div>
-        </div>
-      </div>
-      <div style="font-size:14px; line-height:1.4; margin-bottom:12px; color:#eee;">${p.text}</div>
-      <div style="display:flex; gap:14px; font-size:13px; color:#aaa; border-top:1px solid #2c2c2e; padding-top:10px;">
-        <span id="like-count-${p.id}" style="cursor:pointer;" onclick="likePost('${p.id}')">❤️ ${p.likes} Likes</span>
-        <span>💬 Comments</span>
-      </div>
-    </div>
-  `).join("");
 }
 
-// Double Tap Floating Heart Animation
-function handleDoubleTapLike(postId, e) {
-  likePost(postId);
+// Global Feed Real-time Listener (Sabhi users ke phone par live update)
+if (db) {
+  db.ref("public_feed").on("value", (snapshot) => {
+    const feed = document.getElementById("feed");
+    if (!feed) return;
+
+    const data = snapshot.val();
+    if (!data) {
+      feed.innerHTML = '<div style="text-align:center; color:#888; padding:30px 10px;">Abhi koi public post nahi hai. Pehle aap post kijiye!</div>';
+      return;
+    }
+
+    const postsArray = Object.keys(data).map(key => ({ fbKey: key, ...data[key] })).reverse();
+
+    feed.innerHTML = postsArray.map(p => `
+      <div class="card" ondblclick="handleDoubleTapLike('${p.fbKey}', event)" style="position:relative; margin:10px 0; padding:12px; background:#1c1c1e; border-radius:12px;">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+          <div style="width:36px; height:36px; border-radius:50%; background:#007bff; display:flex; align-items:center; justify-content:center; font-weight:bold; color:#fff;">
+            ${(p.author || 'U')[0].toUpperCase()}
+          </div>
+          <div>
+            <div style="font-weight:bold; font-size:14px; color:#fff;">${p.author}</div>
+            <div style="font-size:11px; color:#888;">${p.handle || '@user'} • ${p.time}</div>
+          </div>
+        </div>
+        <div style="font-size:14px; line-height:1.4; margin-bottom:12px; color:#eee;">${p.text}</div>
+        <div style="display:flex; gap:14px; font-size:13px; color:#aaa; border-top:1px solid #2c2c2e; padding-top:10px;">
+          <span id="like-count-${p.fbKey}" style="cursor:pointer;" onclick="likePost('${p.fbKey}')">❤️ ${p.likes || 0} Likes</span>
+          <span>💬 Comments</span>
+        </div>
+      </div>
+    `).join("");
+  });
+}
+
+// Real Double Tap Like
+function handleDoubleTapLike(fbKey, e) {
+  likePost(fbKey);
   const heart = document.createElement("div");
   heart.className = "floating-heart";
   heart.innerHTML = "❤️";
@@ -1187,24 +1216,20 @@ function handleDoubleTapLike(postId, e) {
   setTimeout(() => heart.remove(), 800);
 }
 
-function likePost(postId) {
-  let globalPosts = JSON.parse(localStorage.getItem("pulse_global_feed")) || [];
-  const post = globalPosts.find(p => p.id === postId);
-  if (post) {
-    post.likes = (post.likes || 0) + 1;
-    localStorage.setItem("pulse_global_feed", JSON.stringify(globalPosts));
-    const elem = document.getElementById(`like-count-${postId}`);
-    if (elem) elem.innerText = `❤️ ${post.likes} Likes`;
+function likePost(fbKey) {
+  if (db) {
+    db.ref("public_feed/" + fbKey + "/likes").transaction(c => (c || 0) + 1);
   }
 }
 
-// 2. Real User Directory & Live Search Engine
+// 2. Real Cloud User Directory & Live Search
 function registerRealUser(name, handle) {
-  let allUsers = JSON.parse(localStorage.getItem("pulse_all_users")) || [];
-  if (!allUsers.some(u => u.handle.toLowerCase() === handle.toLowerCase())) {
-    allUsers.push({ name: name, handle: handle });
-    localStorage.setItem("pulse_all_users", JSON.stringify(allUsers));
-  }
+  if (!name || !handle || !db) return;
+  db.ref("registered_users/" + handle.replace(/[^a-zA-Z0-9]/g, "_")).set({
+    name: name,
+    handle: handle,
+    lastActive: Date.now()
+  });
 }
 
 function handleUserSearch(query) {
@@ -1216,32 +1241,42 @@ function handleUserSearch(query) {
     return;
   }
 
-  // Real Database of registered users
-  const allUsers = JSON.parse(localStorage.getItem("pulse_all_users")) || [];
-  const filtered = allUsers.filter(u => u.name.toLowerCase().includes(q) || u.handle.toLowerCase().includes(q));
+  box.innerHTML = '<div style="color:#007bff; font-size:12px; padding:10px; text-align:center;">Users dhoondhe ja rahe hain... ⏳</div>';
 
-  if (filtered.length === 0) {
-    box.innerHTML = '<div style="color:#888; font-size:12px; padding:12px; text-align:center;">Koi user nahi mila!</div>';
-    return;
+  if (db) {
+    db.ref("registered_users").once("value", (snapshot) => {
+      const data = snapshot.val();
+      if (!data) {
+        box.innerHTML = '<div style="color:#888; font-size:12px; padding:12px; text-align:center;">Koi user nahi mila!</div>';
+        return;
+      }
+
+      const allUsers = Object.values(data);
+      const filtered = allUsers.filter(u => u.name.toLowerCase().includes(q) || u.handle.toLowerCase().includes(q));
+
+      if (filtered.length === 0) {
+        box.innerHTML = '<div style="color:#888; font-size:12px; padding:12px; text-align:center;">Koi user nahi mila!</div>';
+        return;
+      }
+
+      box.innerHTML = filtered.map(u => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #2c2c2e;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:34px; height:34px; border-radius:50%; background:#ff007f; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold;">
+              ${u.name[0].toUpperCase()}
+            </div>
+            <div>
+              <div style="font-weight:bold; font-size:13px; color:#fff;">${u.name}</div>
+              <div style="font-size:11px; color:#888;">${u.handle}</div>
+            </div>
+          </div>
+          <button onclick="startChatWithUser('${u.name}')" style="background:#007bff; color:#fff; border:none; padding:6px 14px; border-radius:14px; font-size:11px; font-weight:bold; cursor:pointer;">Message</button>
+        </div>
+      `).join("");
+    });
   }
-
-  box.innerHTML = filtered.map(u => `
-    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #2c2c2e;">
-      <div style="display:flex; align-items:center; gap:10px;">
-        <div style="width:34px; height:34px; border-radius:50%; background:#ff007f; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold;">
-          ${u.name[0].toUpperCase()}
-        </div>
-        <div>
-          <div style="font-weight:bold; font-size:13px; color:#fff;">${u.name}</div>
-          <div style="font-size:11px; color:#888;">${u.handle}</div>
-        </div>
-      </div>
-      <button onclick="startChatWithUser('${u.name}')" style="background:#007bff; color:#fff; border:none; padding:6px 14px; border-radius:14px; font-size:11px; font-weight:bold; cursor:pointer;">Message</button>
-    </div>
-  `).join("");
-}
+      }
   
-}
 
 // 4. Realtime Chat, Typing & Voice Message
 let activeChatTarget = null;
