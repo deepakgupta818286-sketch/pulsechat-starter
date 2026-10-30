@@ -242,6 +242,8 @@ body.screen-protected .private-call-box {
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+  
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyAwgk2ouRggHR-sM9NeN52zMT6LFMZ44iI",
@@ -270,19 +272,20 @@ let currentChat=null,stream=null,recorder=null,chunks=[],postImg="";
 function save(){localStorage.setItem(KEY,JSON.stringify(db))}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
 function toast(t){let x=document.getElementById("toast");x.textContent=t;x.classList.add("show");setTimeout(()=>x.classList.remove("show"),1800)}
-async function forgotPassword(){
+async function forgotPassword() {
   const email = document.getElementById("loginEmail").value.trim();
-  if(!email){
-    toast("कृपया पहले अपना Email भरें");
+  if (!email) {
+    alert("Kripya pehle apna Email address bharein!");
     return;
   }
   try {
     await auth.sendPasswordResetEmail(email);
-    toast("पासवर्ड रीसेट लिंक आपके Email पर भेज दिया गया है 📩");
-  } catch(e) {
-    toast(authError(e));
+    alert("Password reset link aapke email par bhej diya gaya hai! 📩");
+  } catch (err) {
+    alert("Reset Error: " + (err.message || err.code));
   }
 }
+  
   
 let confirmationResult = null;
 let isOtpPending = false;
@@ -311,18 +314,18 @@ auth.onAuthStateChanged(async (user) => {
   }
 });
   
-  // 1. Sign Up फ़ंक्शन
+  // 1. Sign Up Function
 async function signup() {
   const name = document.getElementById("loginName").value.trim();
   const email = document.getElementById("loginEmail").value.trim();
   const password = document.getElementById("loginPassword").value.trim();
 
   if (!email || !password) {
-    toast("ईमेल और पासवर्ड दोनों भरें!");
+    alert("Email aur Password dono bharein!");
     return;
   }
   if (password.length < 6) {
-    toast("पासवर्ड कम से कम 6 अक्षरों का रखें!");
+    alert("Password kam se kam 6 characters ka hona chahiye!");
     return;
   }
 
@@ -330,31 +333,31 @@ async function signup() {
     const cred = await auth.createUserWithEmailAndPassword(email, password);
     const user = cred.user;
 
-    await fs.collection("users").doc(user.uid).set({
-      name: name || email.split("@")[0],
-      email: email,
-      createdAt: Date.now()
-    });
-
     db.user = { name: name || email.split("@")[0], email: email, uid: user.uid };
     save();
 
-    toast("अकाउंट सफलतापूर्वक बन गया! 🎉");
+    fs.collection("users").doc(user.uid).set({
+      name: name || email.split("@")[0],
+      email: email,
+      createdAt: Date.now()
+    }).catch(e => console.log("Firestore notice:", e));
+
+    alert("Account safaltapoorvak ban gaya! 🎉");
     document.getElementById("loginScreen").style.display = "none";
     document.getElementById("app").style.display = "block";
     refresh();
   } catch (err) {
-    toast(authError(err));
+    alert("Signup Error: " + (err.message || err.code));
   }
 }
 
-// 2. Login फ़ंक्शन
+// 2. Login Function
 async function login() {
   const email = document.getElementById("loginEmail").value.trim();
   const password = document.getElementById("loginPassword").value.trim();
 
   if (!email || !password) {
-    toast("ईमेल और पासवर्ड दर्ज करें!");
+    alert("Email aur Password dono bharein!");
     return;
   }
 
@@ -362,20 +365,18 @@ async function login() {
     const cred = await auth.signInWithEmailAndPassword(email, password);
     const user = cred.user;
 
-    const snap = await fs.collection("users").doc(user.uid).get();
-    const data = snap.exists ? snap.data() : {};
-
-    db.user = { ...db.user, ...data, uid: user.uid, email: user.email, name: data.name || email.split("@")[0] };
+    db.user = { ...db.user, uid: user.uid, email: user.email, name: user.displayName || email.split("@")[0] };
     save();
 
-    toast("लॉगिन सफल रहा! Welcome back 👋");
+    alert("Login safal raha! Welcome back 👋");
     document.getElementById("loginScreen").style.display = "none";
     document.getElementById("app").style.display = "block";
     refresh();
   } catch (err) {
-    toast(authError(err));
+    alert("Login Error: " + (err.message || err.code));
   }
 }
+  
   
   
 function authError(e){const m={"auth/email-already-in-use":"यह Email पहले से registered है। Login करें।","auth/invalid-email":"Email सही नहीं है।","auth/weak-password":"Password थोड़ा मजबूत रखें (कम से कम 6 अक्षर)।","auth/invalid-credential":"Email या Password गलत है।","auth/user-not-found":"अकाउंट नहीं मिला। पहले Sign Up करें।","auth/network-request-failed":"Internet connection जाँचें।","auth/operation-not-allowed":"Firebase Console में Email/Password sign-in चालू करें।"};return m[e.code]||("Firebase error: "+(e.message||e.code||"unknown"))}
@@ -1056,7 +1057,8 @@ function showPage(pageId) {
 if (typeof firebase !== "undefined" && !firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
-const db = (typeof firebase !== "undefined") ? firebase.database() : null;
+const rtdb = (typeof firebase !== "undefined" && firebase.database) ? firebase.database() : null;
+  
 
 // 1. Real Cloud Public Feed Engine
 function submitPublicPost() {
@@ -1081,8 +1083,8 @@ function submitPublicPost() {
     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   };
 
-  if (db) {
-    db.ref("public_feed").push(newPost, (err) => {
+  if (rtdb) {
+    rtdb.ref("public_feed").push(newPost, (err) => {
       if (err) {
         alert("Post sync nahi ho paaya: " + err.message);
       } else {
@@ -1096,8 +1098,8 @@ function submitPublicPost() {
 }
 
 // Global Feed Real-time Listener (Sabhi users ke phone par live update)
-if (db) {
-  db.ref("public_feed").on("value", (snapshot) => {
+if (rtdb) {
+  rtdb.ref("public_feed").on("value", (snapshot) => {
     const feed = document.getElementById("feed");
     if (!feed) return;
 
@@ -1141,15 +1143,15 @@ function handleDoubleTapLike(fbKey, e) {
 }
 
 function likePost(fbKey) {
-  if (db) {
-    db.ref("public_feed/" + fbKey + "/likes").transaction(c => (c || 0) + 1);
+  if (rtdb) {
+    rtdb.ref("public_feed/" + fbKey + "/likes").transaction(c => (c || 0) + 1);
   }
 }
 
 // 2. Real Cloud User Directory & Live Search
 function registerRealUser(name, handle) {
-  if (!name || !handle || !db) return;
-  db.ref("registered_users/" + handle.replace(/[^a-zA-Z0-9]/g, "_")).set({
+  if (!name || !handle || !rtdb) return;
+  rtdb.ref("registered_users/" + handle.replace(/[^a-zA-Z0-9]/g, "_")).set({
     name: name,
     handle: handle,
     lastActive: Date.now()
@@ -1167,8 +1169,8 @@ function handleUserSearch(query) {
 
   box.innerHTML = '<div style="color:#007bff; font-size:12px; padding:10px; text-align:center;">Users dhoondhe ja rahe hain... ⏳</div>';
 
-  if (db) {
-    db.ref("registered_users").once("value", (snapshot) => {
+  if (rtdb) {
+    rtdb.ref("registered_users").once("value", (snapshot) => {
       const data = snapshot.val();
       if (!data) {
         box.innerHTML = '<div style="color:#888; font-size:12px; padding:12px; text-align:center;">Koi user nahi mila!</div>';
