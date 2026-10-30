@@ -1495,57 +1495,314 @@ function hideCurrentChat() {
 // 3. Omegle Safety: Report & Block Partner
 function reportAndBlockPartner() {
   const reason = prompt("Report ka kaaran batayein (Nudity, Abuse, Spam):");
-  if (reason) {
-    alert("User successfully block aur report ho chuka hai! Agle partner par bhej rahe hain...");
-    if (typeof nextRandomPartner === "function") nextRandomPartner();
+/* =========================================================================
+   PULSECHAT ALL-IN-ONE PRO PRODUCTION ENGINE
+   1. Real WebRTC Video Matchmaking (Firebase Signaling)
+   2. Media / Photo Feed Uploads
+   3. Real 24h Expiring Stories System
+   4. Audio Voice Notes in 1-on-1 Chat
+   5. Dynamic Profile & Follow System
+   ========================================================================= */
+
+// ----------------- 1. REAL OMEGLE-STYLE WEBRTC VIDEO CALL -----------------
+let localStream = null;
+let peerConn = null;
+let currentMatchSessionId = null;
+const rtcConfig = {
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" }
+  ]
+};
+
+async function startRandomMatchmaking() {
+  const startBtn = document.getElementById("startMatchBtn");
+  const nextBtn = document.getElementById("nextPartnerBtn");
+  const endBtn = document.getElementById("endMatchBtn");
+
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    const localVideo = document.getElementById("localVideo");
+    if (localVideo) localVideo.srcObject = localStream;
+
+    if (startBtn) startBtn.style.display = "none";
+    if (nextBtn) nextBtn.style.display = "inline-block";
+    if (endBtn) endBtn.style.display = "inline-block";
+
+    joinMatchQueue();
+  } catch (err) {
+    alert("Camera aur Microphone access allow kijiye!");
   }
 }
 
-// 4. Notification Sounds Trigger
-function playDingSound(audioId) {
-  const snd = document.getElementById(audioId);
-  if (snd) {
-    snd.currentTime = 0;
-    snd.play().catch(() => {});
-  }
-}
-  /* ================= REELS AUTOPLAY & EMOJI LOGIC ================= */
+function joinMatchQueue() {
+  if (typeof db === "undefined" || !db) return;
+  const myUser = JSON.parse(localStorage.getItem("pulsechat_user")) || { name: "User_" + Date.now() };
+  const queueRef = db.ref("video_queue");
 
-// Reels Auto-play when visible in view
-function initReelsAutoScroll() {
-  const reelVideos = document.querySelectorAll(".reel-card video");
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.play().catch(() => {});
-      } else {
-        entry.target.pause();
+  queueRef.once("value", async (snap) => {
+    const queue = snap.val() || {};
+    const waitingUsers = Object.keys(queue);
+
+    if (waitingUsers.length > 0) {
+      const partnerKey = waitingUsers[0];
+      currentMatchSessionId = partnerKey;
+      queueRef.child(partnerKey).remove();
+      setupPeerConnection(false, currentMatchSessionId);
+    } else {
+      const newRef = queueRef.push();
+      currentMatchSessionId = newRef.key;
+      newRef.set({ name: myUser.name, timestamp: Date.now() });
+      newRef.onDisconnect().remove();
+      setupPeerConnection(true, currentMatchSessionId);
+    }
+  });
+}
+
+function setupPeerConnection(isInitiator, roomId) {
+  peerConn = new RTCPeerConnection(rtcConfig);
+
+  localStream.getTracks().forEach(track => peerConn.addTrack(track, localStream));
+
+  peerConn.ontrack = (event) => {
+    const remoteVideo = document.getElementById("remoteVideo");
+    if (remoteVideo) remoteVideo.srcObject = event.streams[0];
+  };
+
+  const roomRef = db.ref("call_rooms/" + roomId);
+
+  peerConn.onicecandidate = (event) => {
+    if (event.candidate) {
+      roomRef.child(isInitiator ? "initiator_ice" : "receiver_ice").push(event.candidate.toJSON());
+    }
+  };
+
+  if (isInitiator) {
+    peerConn.createOffer().then(offer => {
+      peerConn.setLocalDescription(offer);
+      roomRef.child("offer").set(offer.toJSON());
+    });
+
+    roomRef.child("answer").on("value", snap => {
+      const data = snap.val();
+      if (data && !peerConn.currentRemoteDescription) {
+        peerConn.setRemoteDescription(new RTCSessionDescription(data));
       }
     });
-  }, { threshold: 0.6 });
 
-  reelVideos.forEach(v => observer.observe(v));
-}
+    roomRef.child("receiver_ice").on("child_added", snap => {
+      peerConn.addIceCandidate(new RTCIceCandidate(snap.val()));
+    });
+  } else {
+    roomRef.child("offer").on("value", snap => {
+      const data = snap.val();
+      if (data && !peerConn.currentRemoteDescription) {
+        peerConn.setRemoteDescription(new RTCSessionDescription(data)).then(() => {
+          peerConn.createAnswer().then(answer => {
+            peerConn.setLocalDescription(answer);
+            roomRef.child("answer").set(answer.toJSON());
+          });
+        });
+      }
+    });
 
-// Quick Emoji Insert
-function toggleEmojiTray() {
-  const tray = document.getElementById("emojiPickerTray");
-  if (tray) tray.style.display = tray.style.display === "none" ? "flex" : "none";
-}
-
-function insertQuickEmoji(emoji) {
-  const input = document.getElementById("messageInput");
-  if (input) {
-    input.value += emoji;
-    input.focus();
+    roomRef.child("initiator_ice").on("child_added", snap => {
+      peerConn.addIceCandidate(new RTCIceCandidate(snap.val()));
+    });
   }
 }
 
-// Story Viewers Trigger
-function openStoryViewers() {
-  const modal = document.getElementById("storyViewersModal");
-  if (modal) modal.style.display = "flex";
+function nextRandomPartner() {
+  if (peerConn) peerConn.close();
+  const remoteVideo = document.getElementById("remoteVideo");
+  if (remoteVideo) remoteVideo.srcObject = null;
+  joinMatchQueue();
 }
+
+function endMatchSession() {
+  if (peerConn) peerConn.close();
+  if (localStream) localStream.getTracks().forEach(t => t.stop());
+  const localVideo = document.getElementById("localVideo");
+  const remoteVideo = document.getElementById("remoteVideo");
+  if (localVideo) localVideo.srcObject = null;
+  if (remoteVideo) remoteVideo.srcObject = null;
+
+  const startBtn = document.getElementById("startMatchBtn");
+  const nextBtn = document.getElementById("nextPartnerBtn");
+  const endBtn = document.getElementById("endMatchBtn");
+  if (startBtn) startBtn.style.display = "inline-block";
+  if (nextBtn) nextBtn.style.display = "none";
+  if (endBtn) endBtn.style.display = "none";
+}
+
+// ----------------- 2. PHOTO / MEDIA POSTS IN FEED -----------------
+function uploadMediaPost(imageFileInput) {
+  const file = imageFileInput ? imageFileInput.files[0] : null;
+  const txtInput = document.getElementById("postText");
+  const caption = txtInput ? txtInput.value.trim() : "";
+
+  if (!file && !caption) {
+    alert("Post karne ke liye photo ya text daalein!");
+    return;
+  }
+
+  const currentUser = JSON.parse(localStorage.getItem("pulsechat_user")) || { name: "User", handle: "@user" };
+
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      savePostToCloud(currentUser, caption, e.target.result);
+    };
+    reader.readAsDataURL(file);
+  } else {
+    savePostToCloud(currentUser, caption, null);
+  }
+}
+
+function savePostToCloud(user, text, base64Image) {
+  if (typeof db === "undefined" || !db) return;
+  db.ref("public_feed").push({
+    author: user.name,
+    handle: user.handle,
+    text: text,
+    image: base64Image,
+    likes: 0,
+    timestamp: Date.now(),
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }, (err) => {
+    if (!err) {
+      const txt = document.getElementById("postText");
+      if (txt) txt.value = "";
+      alert("Post globally publish ho gaya! 🎉");
+    }
+  });
+}
+
+// ----------------- 3. 24-HOUR STORIES ENGINE -----------------
+function uploadUserStory(storyFileInput) {
+  const file = storyFileInput ? storyFileInput.files[0] : null;
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const currentUser = JSON.parse(localStorage.getItem("pulsechat_user")) || { name: "User" };
+    if (typeof db === "undefined" || !db) return;
+
+    db.ref("stories").push({
+      author: currentUser.name,
+      avatar: (currentUser.name || "U")[0].toUpperCase(),
+      media: e.target.result,
+      timestamp: Date.now()
+    }, (err) => {
+      if (!err) alert("24 Ghante ke liye Story live ho chuki hai! 📸");
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+if (typeof db !== "undefined" && db) {
+  db.ref("stories").on("value", (snap) => {
+    const container = document.querySelector(".story-row");
+    if (!container) return;
+
+    const data = snap.val();
+    if (!data) return;
+
+    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+    const validStories = Object.values(data).filter(s => s.timestamp > oneDayAgo);
+
+    container.innerHTML = `
+      <div style="text-align:center; cursor:pointer;" onclick="const si = document.getElementById('storyInput'); if(si) si.click();">
+        <div style="width:58px; height:58px; border-radius:50%; border:2px dashed #007bff; display:flex; align-items:center; justify-content:center; color:#007bff; font-size:24px;">+</div>
+        <div style="font-size:10px; margin-top:4px; color:#aaa;">Add Story</div>
+      </div>
+    ` + validStories.map(s => `
+      <div style="text-align:center; cursor:pointer;" onclick="viewFullStory('${s.media}')">
+        <div style="width:58px; height:58px; border-radius:50%; border:2px solid #ff007f; padding:2px; display:inline-block;">
+          <img src="${s.media}" style="width:54px; height:54px; border-radius:50%; object-fit:cover; display:block;">
+        </div>
+        <div style="font-size:10px; margin-top:4px; color:#fff;">${s.author}</div>
+      </div>
+    `).join("");
+  });
+}
+
+function viewFullStory(mediaUrl) {
+  const modal = document.createElement("div");
+  modal.style.position = "fixed";
+  modal.style.inset = "0";
+  modal.style.background = "rgba(0,0,0,0.95)";
+  modal.style.zIndex = "99999";
+  modal.style.display = "flex";
+  modal.style.alignItems = "center";
+  modal.style.justifyContent = "center";
+  modal.innerHTML = `
+    <img src="${mediaUrl}" style="max-width:90%; max-height:85%; border-radius:12px;">
+    <button onclick="this.parentElement.remove()" style="position:absolute; top:20px; right:20px; background:#ff007f; color:#fff; border:none; padding:8px 16px; border-radius:20px; font-weight:bold; cursor:pointer;">Close</button>
+  `;
+  document.body.appendChild(modal);
+}
+
+// ----------------- 4. VOICE NOTES IN CHAT -----------------
+let mediaRecorder = null;
+let voiceChunks = [];
+
+function toggleVoiceRecord() {
+  const micBtn = document.getElementById("voiceRecordBtn");
+  if (!mediaRecorder || mediaRecorder.state === "inactive") {
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      mediaRecorder = new MediaRecorder(stream);
+      voiceChunks = [];
+      mediaRecorder.ondataavailable = e => voiceChunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(voiceChunks, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          sendVoiceMessage(reader.result);
+        };
+        reader.readAsDataURL(audioBlob);
+      };
+      mediaRecorder.start();
+      if (micBtn) micBtn.innerText = "🔴 Recording...";
+    }).catch(() => alert("Mic permission allow karein!"));
+  } else {
+    mediaRecorder.stop();
+    if (micBtn) micBtn.innerText = "🎤 Mic";
+  }
+}
+
+function sendVoiceMessage(base64Audio) {
+  if (!currentChatPartner || typeof db === "undefined" || !db) return;
+  const currentUser = JSON.parse(localStorage.getItem("pulsechat_user")) || { name: "Me" };
+  const roomId = getChatRoomId();
+
+  db.ref("chats/" + roomId).push({
+    sender: currentUser.name,
+    audio: base64Audio,
+    timestamp: Date.now(),
+    time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  });
+}
+
+// ----------------- 5. DYNAMIC PROFILE & FOLLOW ENGINE -----------------
+function toggleFollowUser(targetHandle) {
+  if (typeof db === "undefined" || !db) return;
+  const currentUser = JSON.parse(localStorage.getItem("pulsechat_user")) || { handle: "@guest" };
+  const myKey = currentUser.handle.replace(/[^a-zA-Z0-9]/g, "_");
+  const targetKey = targetHandle.replace(/[^a-zA-Z0-9]/g, "_");
+
+  const followRef = db.ref(`social_graph/${targetKey}/followers/${myKey}`);
+  followRef.once("value", snap => {
+    if (snap.exists()) {
+      followRef.remove();
+      alert(`Unfollowed ${targetHandle}`);
+    } else {
+      followRef.set(true);
+      alert(`Now following ${targetHandle}! ✨`);
+    }
+  });
+}
+  
   
 </script>
   <!-- Story Creator Modal (Camera / Gallery / Music) -->
