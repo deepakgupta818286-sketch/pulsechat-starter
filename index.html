@@ -36,6 +36,8 @@ input,textarea{font:inherit;width:100%;padding:12px;border:1px solid #dbe2ea;bor
 video{width:100%;background:#05070b;border-radius:18px;max-height:60vh;object-fit:cover}.video-wrap{position:relative}.local{position:absolute;width:100px;height:145px;right:12px;top:12px;border:2px solid white}.call-controls{display:flex;justify-content:center;gap:9px;margin-top:10px}.call-controls button{width:50px;height:50px;border:0;border-radius:50%}.end{background:#ef4444;color:white}
 @media(max-width:480px){.welcome h1{font-size:23px}.nav-btn{font-size:8px}.nav-icon{font-size:19px}}
 </style>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  
 </head>
 <body>
 <div id="loginScreen" class="login"><div class="login-box">
@@ -779,6 +781,106 @@ function setOnlineStatus(isOnline) {
 
 // Browser tab band ya refresh hone par offline mark karein
 window.addEventListener("beforeunload", () => setOnlineStatus(false));
+  // --- EMAIL OTP AUTHENTICATION SYSTEM ---
+emailjs.init("YOUR_PUBLIC_KEY");
+
+let generatedOTP = null;
+let pendingUserData = null;
+
+// New User Sign Up Function
+function signup() {
+  const nameInput = document.getElementById("loginName");
+  const emailInput = document.getElementById("loginEmail");
+  const otpInput = document.getElementById("loginOtp");
+  const otpSection = document.getElementById("otpSection");
+
+  const name = nameInput ? nameInput.value.trim() : "";
+  const email = emailInput ? emailInput.value.trim() : "";
+
+  if (!name || !email) {
+    alert("कृपया अपना पूरा नाम और ईमेल भरें!");
+    return;
+  }
+
+  // Agar user ne OTP daal diya hai aur submit kiya
+  if (otpSection && otpSection.style.display !== "none" && otpInput && otpInput.value.trim().length > 0) {
+    verifyAndCompleteAuth(otpInput.value.trim());
+    return;
+  }
+
+  // OTP Generate karein
+  generatedOTP = Math.floor(100000 + Math.random() * 900000).toString();
+  pendingUserData = { name: name, email: email, mode: "signup" };
+
+  sendOTPEmail(email, name);
+}
+
+// Existing User Login Function
+function login() {
+  const emailInput = document.getElementById("loginEmail");
+  const otpInput = document.getElementById("loginOtp");
+  const otpSection = document.getElementById("otpSection");
+
+  const email = emailInput ? emailInput.value.trim() : "";
+
+  if (!email) {
+    alert("कृपया अपना पंजीकृत ईमेल आईडी भरें!");
+    return;
+  }
+
+  // Agar OTP section pehle se visible hai aur OTP daal diya gaya hai
+  if (otpSection && otpSection.style.display !== "none" && otpInput && otpInput.value.trim().length > 0) {
+    verifyAndCompleteAuth(otpInput.value.trim());
+    return;
+  }
+
+  // Login ke liye naya OTP banayein
+  generatedOTP = Math.floor(100000 + Math.random() * 900000).toString();
+  pendingUserData = { email: email, mode: "login" };
+
+  sendOTPEmail(email, "PulseChat Member");
+}
+
+// Email bhejne ka helper function
+function sendOTPEmail(toEmail, userName) {
+  const otpSection = document.getElementById("otpSection");
+  if (otpSection) {
+    otpSection.style.display = "block";
+  }
+
+  emailjs.send("YOUR_SERVICE_ID", "YOUR_TEMPLATE_ID", {
+    to_email: toEmail,
+    user_name: userName,
+    otp_code: generatedOTP
+  })
+  .then(function() {
+    alert("आपके ईमेल पर 6-अंकों का OTP भेज दिया गया है। कृपया चेक करें!");
+  })
+  .catch(function(err) {
+    console.error("Email send failed:", err);
+    alert("OTP भेजने में समस्या आई। कृपया ईमेल आईडी चेक करें।");
+  });
+}
+
+// OTP Match & Success Handler
+function verifyAndCompleteAuth(enteredOtp) {
+  if (enteredOtp === generatedOTP) {
+    if (pendingUserData.mode === "signup") {
+      localStorage.setItem("pulsechat_user", JSON.stringify(pendingUserData));
+      alert("अकाउंट सफलतापूर्वक बन गया! स्वागत है PulseChat में।");
+    } else {
+      alert("लॉगिन सफल रहा!");
+    }
+
+    // Login screen hatakar app screen dikhayein
+    const loginScr = document.getElementById("loginScreen");
+    const appScr = document.getElementById("app");
+    if (loginScr) loginScr.style.display = "none";
+    if (appScr) appScr.style.display = "block";
+  } else {
+    alert("गलत OTP! कृपया ईमेल में आया हुआ सही OTP दर्ज करें।");
+  }
+}
   
 </script>
 </body>
