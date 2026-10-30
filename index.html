@@ -789,6 +789,15 @@ let pendingUserData = null;
 
 // New User Sign Up Function
 function signup() {
+  // --- BREVO EMAIL OTP AUTHENTICATION ---
+const BREVO_API_KEY = "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";
+const SENDER_EMAIL = "deepakgupta818286@gmail.com";
+
+let generatedOTP = null;
+let pendingUserData = null;
+
+// New User Sign Up
+function signup() {
   const nameInput = document.getElementById("loginName");
   const emailInput = document.getElementById("loginEmail");
   const otpInput = document.getElementById("loginOtp");
@@ -798,24 +807,23 @@ function signup() {
   const email = emailInput ? emailInput.value.trim() : "";
 
   if (!name || !email) {
-    alert("कृपया अपना पूरा नाम और ईमेल भरें!");
+    alert("Kripya apna pura naam aur email bharein!");
     return;
   }
 
-  // Agar user ne OTP daal diya hai aur submit kiya
+  // OTP verify logic
   if (otpSection && otpSection.style.display !== "none" && otpInput && otpInput.value.trim().length > 0) {
     verifyAndCompleteAuth(otpInput.value.trim());
     return;
   }
 
-  // OTP Generate karein
   generatedOTP = Math.floor(100000 + Math.random() * 900000).toString();
   pendingUserData = { name: name, email: email, mode: "signup" };
 
-  sendOTPEmail(email, name);
+  sendBrevoOTP(email, name, generatedOTP);
 }
 
-// Existing User Login Function
+// Existing User Login
 function login() {
   const emailInput = document.getElementById("loginEmail");
   const otpInput = document.getElementById("loginOtp");
@@ -824,57 +832,81 @@ function login() {
   const email = emailInput ? emailInput.value.trim() : "";
 
   if (!email) {
-    alert("कृपया अपना पंजीकृत ईमेल आईडी भरें!");
+    alert("Kripya apna email bharein!");
     return;
   }
 
-  // Agar OTP section pehle se visible hai aur OTP daal diya gaya hai
   if (otpSection && otpSection.style.display !== "none" && otpInput && otpInput.value.trim().length > 0) {
     verifyAndCompleteAuth(otpInput.value.trim());
     return;
   }
 
-  // Login ke liye naya OTP banayein
   generatedOTP = Math.floor(100000 + Math.random() * 900000).toString();
   pendingUserData = { email: email, mode: "login" };
 
-  sendOTPEmail(email, "PulseChat Member");
+  sendBrevoOTP(email, "Member", generatedOTP);
 }
 
-// Email bhejne ka helper function
-function sendOTPEmail(toEmail, userName) {
+// Brevo API Call
+function sendBrevoOTP(toEmail, userName, otp) {
   const otpSection = document.getElementById("otpSection");
-  if (otpSection) {
-    otpSection.style.display = "block";
-  }
+  if (otpSection) otpSection.style.display = "block";
 
-  emailjs.send("YOUR_SERVICE_ID", "YOUR_TEMPLATE_ID", {
-    to_email: toEmail,
-    user_name: userName,
-    otp_code: generatedOTP
+  fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "accept": "application/json",
+      "api-key": BREVO_API_KEY,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      sender: { name: "PulseChat", email: SENDER_EMAIL },
+      to: [{ email: toEmail, name: userName }],
+      subject: "PulseChat Login OTP Code",
+      htmlContent: `<div style="font-family:sans-serif;padding:20px;line-height:1.5;">
+        <h2>PulseChat Verification</h2>
+        <p>Namaste ${userName},</p>
+        <p>Aapka 6-digit verification OTP code hai:</p>
+        <h1 style="color:#007bff;letter-spacing:4px;">${otp}</h1>
+        <p>Yeh code 10 minute ke liye valid hai. Kisi ke saath share na karein.</p>
+      </div>`
+    })
   })
-  .then(function() {
-    alert("आपके ईमेल पर 6-अंकों का OTP भेज दिया गया है। कृपया चेक करें!");
+  .then(res => {
+    if (res.ok) {
+      alert("OTP aapke email par bhej diya gaya hai!");
+    } else {
+      res.json().then(data => {
+        console.error("Brevo Error:", data);
+        alert("Email bhejne mein dikkat aayi: " + (data.message || "Kripya dobara try karein."));
+      });
+    }
   })
-  .catch(function(err) {
-    console.error("Email send failed:", err);
-    alert("OTP भेजने में समस्या आई। कृपया ईमेल आईडी चेक करें।");
+  .catch(err => {
+    console.error("Network Error:", err);
+    alert("Network samasya. Kripya internet check karein.");
   });
 }
 
-// OTP Match & Success Handler
+// Match OTP
 function verifyAndCompleteAuth(enteredOtp) {
   if (enteredOtp === generatedOTP) {
     if (pendingUserData.mode === "signup") {
       localStorage.setItem("pulsechat_user", JSON.stringify(pendingUserData));
-      alert("अकाउंट सफलतापूर्वक बन गया! स्वागत है PulseChat में।");
+      alert("Sign-up safal raha! PulseChat mein swagat hai.");
     } else {
-      alert("लॉगिन सफल रहा!");
+      alert("Login safal raha!");
     }
 
-    // Login screen hatakar app screen dikhayein
     const loginScr = document.getElementById("loginScreen");
     const appScr = document.getElementById("app");
+    if (loginScr) loginScr.style.display = "none";
+    if (appScr) appScr.style.display = "block";
+  } else {
+    alert("Galat OTP! Kripya email mein aaya sahi code daalein.");
+  }
+}
+  const appScr = document.getElementById("app");
     if (loginScr) loginScr.style.display = "none";
     if (appScr) appScr.style.display = "block";
   } else {
