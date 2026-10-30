@@ -48,14 +48,18 @@ video{width:100%;background:#05070b;border-radius:18px;max-height:60vh;object-fi
 <input id="loginPassword" type="password" placeholder="Password (कम से कम 6 अक्षर)" autocomplete="current-password">
   <input id="loginPhone" type="tel" placeholder="Mobile Number (+91...)" autocomplete="tel" style="margin-top:8px">
 
-<div id="otpSection" style="display:none;margin-top:8px;">
-  <input id="loginOtp" type="text" placeholder="6-digit OTP दर्ज करें" maxlength="6">
+<div id="otpSection" style="display:none;margin-top:12px;">
+  <input id="loginOtp" type="text" placeholder="6-digit OTP दर्ज करें" maxlength="6" style="text-align:center;font-size:18px;letter-spacing:4px;">
+  <button type="button" onclick="submitOtpVerification()" style="width:100%;margin-top:8px;padding:12px;background:#28a745;color:#fff;border:none;border-radius:10px;font-weight:bold;cursor:pointer;">
+    OTP सत्यापित करें / Verify OTP
+  </button>
 </div>
+  
 
 <div id="recaptcha-container"></div>
   
-<button onclick="alert('Login button chal gaya!'); login();">Login करें</button>
-<button class="btn soft" style="width:100%;margin-top:9px;padding:14px" onclick="alert('Signup button chal gaya!'); signup();">नया अकाउंट बनाएं / Sign Up</button>
+<button id="mainLoginBtn" onclick="login();">Login करें</button>
+<button id="mainSignupBtn" class="btn soft" style="width:100%;margin-top:9px;padding:14px" onclick="signup();">नया अकाउंट बनाएं / Sign Up</button>
   
   <p style="margin-top:10px;text-align:right;"><a href="javascript:void(0)" onclick="forgotPassword()" style="color:#1677ff;font-size:13px;text-decoration:none;">Forgot Password?</a></p>
   
@@ -741,6 +745,9 @@ function sendBrevoOTP(toEmail, userName, otp) {
   .then(res => {
     if (res.ok) {
       alert("OTP आपके ईमेल पर भेज दिया गया है!");
+      document.getElementById("mainLoginBtn").style.display = "none";
+document.getElementById("mainSignupBtn").style.display = "none";
+      
     } else {
       res.json().then(data => {
         console.error("Brevo Error:", data);
@@ -753,7 +760,16 @@ function sendBrevoOTP(toEmail, userName, otp) {
     alert("नेटवर्क समस्या। कृपया इंटरनेट चेक करें।");
   });
 }
-
+function submitOtpVerification() {
+  const otpInput = document.getElementById("loginOtp");
+  const entered = otpInput ? otpInput.value.trim() : "";
+  if (!entered) {
+    alert("कृपया ईमेल में आया OTP दर्ज करें!");
+    return;
+  }
+  verifyAndCompleteAuth(entered);
+}
+  
 // Match OTP
 function verifyAndCompleteAuth(enteredOtp) {
   if (enteredOtp === generatedOTP) {
