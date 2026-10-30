@@ -652,8 +652,6 @@ const BREVO_API_KEY = _k1 + _k2 + _k3 + _k4;
 
 const SENDER_EMAIL = "deepakgupta818286@gmail.com";
 
-let generatedOTP = null;
-let pendingUserData = null;
 
 // New User Sign Up
 function signup() {
@@ -723,6 +721,7 @@ function sendBrevoOTP(toEmail, userName, otp) {
       to: [{ email: toEmail, name: userName }],
       subject: "PulseChat Login OTP Code",
       htmlContent: `<div style="font-family:sans-serif;padding:20px;line-height:1.5;">
+      
         <h2>PulseChat Verification</h2>
         <p>नमस्ते ${userName},</p>
         <p>आपका 6-अंकों का वेरिफिकेशन OTP कोड है:</p>
