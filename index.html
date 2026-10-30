@@ -1840,6 +1840,44 @@ const msgBox = document.getElementById("messageInput");
 if (msgBox) {
   msgBox.addEventListener("input", handleUserTyping);
 }
+  // Profile Counters Live Sync (Posts, Followers, Following)
+function updateProfileCounters() {
+  const currentUser = JSON.parse(localStorage.getItem("pulsechat_user"));
+  if (!currentUser || typeof db === "undefined" || !db) return;
+
+  const myKey = (currentUser.handle || "@user").replace(/[^a-zA-Z0-9]/g, "_");
+
+  // 1. Live Followers Count
+  db.ref(`social_graph/${myKey}/followers`).on("value", (snap) => {
+    const followers = snap.val() ? Object.keys(snap.val()).length : 0;
+    const el = document.getElementById("profileFollowersCount");
+    if (el) el.innerText = followers;
+  });
+
+  // 2. Live Following Count
+  db.ref("social_graph").on("value", (snap) => {
+    const allGraphs = snap.val() || {};
+    let followingCount = 0;
+    Object.values(allGraphs).forEach(userGraph => {
+      if (userGraph.followers && userGraph.followers[myKey]) {
+        followingCount++;
+      }
+    });
+    const el = document.getElementById("profileFollowingCount");
+    if (el) el.innerText = followingCount;
+  });
+
+  // 3. User Ke Total Posts Count
+  db.ref("public_feed").on("value", (snap) => {
+    const posts = snap.val() || {};
+    const myPosts = Object.values(posts).filter(p => p.handle === currentUser.handle || p.author === currentUser.name);
+    const el = document.getElementById("profilePostsCount");
+    if (el) el.innerText = myPosts.length;
+  });
+}
+
+// Profile open hone par counters fetch karein
+window.addEventListener("DOMContentLoaded", updateProfileCounters);
   
 </script>
   <!-- Story Creator Modal (Camera / Gallery / Music) -->
