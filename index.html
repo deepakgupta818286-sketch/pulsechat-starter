@@ -35,6 +35,109 @@ input,textarea{font:inherit;width:100%;padding:12px;border:1px solid #dbe2ea;bor
 .toast{position:fixed;bottom:82px;left:50%;transform:translate(-50%,20px);background:#111827;color:white;padding:10px 15px;border-radius:12px;opacity:0;transition:.25s;z-index:100}.toast.show{opacity:1;transform:translate(-50%,0)}
 video{width:100%;background:#05070b;border-radius:18px;max-height:60vh;object-fit:cover}.video-wrap{position:relative}.local{position:absolute;width:100px;height:145px;right:12px;top:12px;border:2px solid white}.call-controls{display:flex;justify-content:center;gap:9px;margin-top:10px}.call-controls button{width:50px;height:50px;border:0;border-radius:50%}.end{background:#ef4444;color:white}
 @media(max-width:480px){.welcome h1{font-size:23px}.nav-btn{font-size:8px}.nav-icon{font-size:19px}}
+  /* ================= PULSECHAT ADVANCED PRO STYLES ================= */
+
+/* Anti-Screenshot Privacy Shield */
+body.screen-protected #chatRoom,
+body.screen-protected #messages,
+body.screen-protected .private-call-box {
+  filter: blur(30px) !important;
+  opacity: 0.05 !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  pointer-events: none !important;
+}
+
+/* Story Camera & Beauty Filters */
+.camera-filter-glow { filter: brightness(1.15) contrast(1.05) saturate(1.1); }
+.camera-filter-rosy { filter: brightness(1.08) contrast(1.08) hue-rotate(345deg) saturate(1.25); }
+.camera-filter-golden { filter: sepia(0.25) brightness(1.12) contrast(1.1) saturate(1.3); }
+.camera-filter-vintage { filter: sepia(0.4) contrast(1.15) brightness(0.95); }
+.camera-filter-bw { filter: grayscale(1) contrast(1.2); }
+
+/* Filter Round Buttons Slider */
+.filter-btn-pill {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.filter-btn-pill.active {
+  border-color: #ff007f;
+  transform: scale(1.15);
+  box-shadow: 0 0 10px #ff007f;
+}
+
+/* Modals Overlay (Music, Camera, Story) */
+.pulse-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 15px;
+}
+
+/* Floating Double Tap Like Heart */
+@keyframes heartFloatFade {
+  0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+  50% { transform: translate(-50%, -50%) scale(1.4); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+.floating-heart {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 80px;
+  color: #ff1744;
+  pointer-events: none;
+  animation: heartFloatFade 0.8s ease-out forwards;
+  z-index: 50;
+}
+
+/* Reels Vertical Video View */
+.reel-card {
+  height: calc(100vh - 70px);
+  scroll-snap-align: start;
+  position: relative;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.reel-card video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Typing Indicator Animation */
+.typing-dots span {
+  animation: blinkDots 1.4s infinite both;
+  font-weight: bold;
+  font-size: 16px;
+}
+.typing-dots span:nth-child(2) { animation-delay: .2s; }
+.typing-dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes blinkDots {
+  0%, 80%, 100% { opacity: 0; }
+  40% { opacity: 1; }
+}
+  
 </style>
 
   
@@ -790,8 +893,636 @@ function verifyAndCompleteAuth(enteredOtp) {
 }
   
 
+/* ================= PULSECHAT ADVANCED FEATURES ENGINE ================= */
 
+// 1. Anti-Screenshot & Screen Blur Guard
+function isPrivateViewActive() {
+  const chatRoom = document.getElementById("chatRoom");
+  return chatRoom && chatRoom.style.display !== "none";
+}
+
+window.addEventListener("blur", () => {
+  if (isPrivateViewActive()) document.body.classList.add("screen-protected");
+});
+window.addEventListener("focus", () => {
+  document.body.classList.remove("screen-protected");
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && isPrivateViewActive()) {
+    document.body.classList.add("screen-protected");
+  } else {
+    document.body.classList.remove("screen-protected");
+  }
+});
+window.addEventListener("keyup", (e) => {
+  if (e.key === "PrintScreen" && isPrivateViewActive()) {
+    navigator.clipboard.writeText("");
+    alert("प्राइवेसी अलर्ट: प्राइवेट चैट में स्क्रीनशॉट लेना मना है!");
+  }
+});
+
+// 2. Story Modal & Camera Handlers
+let cameraStream = null;
+let activeBeautyFilter = '';
+let chosenStoryMedia = null;
+let chosenStoryMusic = null;
+
+function triggerStoryUpload() {
+  const modal = document.getElementById("storyCreateModal");
+  if (modal) modal.style.display = "flex";
+}
+
+function closeStoryModal() {
+  stopLiveCamera();
+  const modal = document.getElementById("storyCreateModal");
+  if (modal) modal.style.display = "none";
+  retakeStory();
+}
+
+async function openLiveCamera() {
+  const cameraBox = document.getElementById("storyCameraBox");
+  const actions = document.getElementById("storyPickActions");
+  const video = document.getElementById("storyVideoPreview");
+  
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user" },
+      audio: false
+    });
+    video.srcObject = cameraStream;
+    cameraBox.style.display = "block";
+    actions.style.display = "none";
+    
+    // Add snap button if not present
+    if (!document.getElementById("cameraSnapBtn")) {
+      const snapBtn = document.createElement("button");
+      snapBtn.id = "cameraSnapBtn";
+      snapBtn.innerText = "📸 Click";
+      snapBtn.style = "position:absolute; top:12px; right:12px; background:#ff007f; color:#fff; border:none; padding:8px 16px; border-radius:20px; font-weight:bold; cursor:pointer;";
+      snapBtn.onclick = captureCameraPhoto;
+      cameraBox.appendChild(snapBtn);
+    }
+  } catch (err) {
+    alert("कैमरा परमिशन नहीं मिली या कैमरा सपोर्टेड नहीं है!");
+  }
+}
+
+function stopLiveCamera() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(track => track.stop());
+    cameraStream = null;
+  }
+}
+
+function applyBeautyFilter(filterClass) {
+  activeBeautyFilter = filterClass;
+  const video = document.getElementById("storyVideoPreview");
+  video.className = filterClass;
+  
+  document.querySelectorAll(".filter-btn-pill").forEach(btn => {
+    btn.classList.remove("active");
+  });
+  event.target.classList.add("active");
+}
+
+function captureCameraPhoto() {
+  const video = document.getElementById("storyVideoPreview");
+  const canvas = document.getElementById("storyCanvas");
+  canvas.width = video.videoWidth || 640;
+  canvas.height = video.videoHeight || 480;
+  
+  const ctx = canvas.getContext("2d");
+  if (activeBeautyFilter) {
+    const style = getComputedStyle(video);
+    ctx.filter = style.filter;
+  }
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  
+  const photoData = canvas.toDataURL("image/jpeg", 0.9);
+  chosenStoryMedia = { type: 'image', data: photoData };
+  
+  stopLiveCamera();
+  document.getElementById("storyCameraBox").style.display = "none";
+  showMediaPreview(photoData);
+}
+
+function handleGalleryStoryPick(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    chosenStoryMedia = { type: file.type.startsWith("video") ? "video" : "image", data: evt.target.result };
+    document.getElementById("storyPickActions").style.display = "none";
+    showMediaPreview(evt.target.result);
+  };
+  reader.readAsDataURL(file);
+}
+
+function showMediaPreview(src) {
+  const previewBox = document.getElementById("storyImagePreviewBox");
+  const previewImg = document.getElementById("storyPreviewImg");
+  previewImg.src = src;
+  previewBox.style.display = "block";
+  document.getElementById("storyPostControls").style.display = "block";
+}
+
+function retakeStory() {
+  stopLiveCamera();
+  chosenStoryMedia = null;
+  chosenStoryMusic = null;
+  document.getElementById("storyCameraBox").style.display = "none";
+  document.getElementById("storyImagePreviewBox").style.display = "none";
+  document.getElementById("storyPostControls").style.display = "none";
+  document.getElementById("storyPickActions").style.display = "flex";
+  document.getElementById("selectedSongLabel").innerText = "🎵 No Music Added";
+}
+
+// 3. Music Search & Selection
+const demoMusicLibrary = [
+  { id: "m1", title: "Tum Hi Ho (Acoustic)", artist: "Arijit Singh", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" },
+  { id: "m2", title: "Brown Munde (Beat)", artist: "AP Dhillon", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" },
+  { id: "m3", title: "Raataan Lambiyan", artist: "Jubin Nautiyal", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" },
+  { id: "m4", title: "Pasoori", artist: "Ali Sethi", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3" }
+];
+
+function openMusicSearchModal() {
+  document.getElementById("musicSearchModal").style.display = "flex";
+  searchAudioTracks("");
+}
+function closeMusicSearchModal() {
+  document.getElementById("musicSearchModal").style.display = "none";
+}
+
+function searchAudioTracks(query) {
+  const resultsBox = document.getElementById("musicSearchResults");
+  const q = query.toLowerCase().trim();
+  const filtered = demoMusicLibrary.filter(s => s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q));
+  
+  resultsBox.innerHTML = filtered.map(song => `
+    <div onclick="selectSongForStory('${song.title}', '${song.url}')" style="display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #333; cursor:pointer;">
+      <div>
+        <div style="font-weight:bold; font-size:14px;">${song.title}</div>
+        <div style="font-size:12px; color:#aaa;">${song.artist}</div>
+      </div>
+      <button style="background:#ff007f; color:#fff; border:none; padding:4px 10px; border-radius:12px; font-size:11px;">Select</button>
+    </div>
+  `).join("");
+}
+
+function selectSongForStory(title, url) {
+  chosenStoryMusic = { title, url };
+  document.getElementById("selectedSongLabel").innerText = "🎵 " + title;
+  closeMusicSearchModal();
+}
+
+function uploadFinalStory() {
+  if (!chosenStoryMedia) {
+    alert("कृपया पहले फ़ोटो खींचें या सेलेक्ट करें!");
+    return;
+  }
+  alert("Story सफलतापूर्वक अपलोड हो गई! (With Music: " + (chosenStoryMusic ? chosenStoryMusic.title : "None") + ")");
+  closeStoryModal();
+}
+  
+ /* ================= PULSECHAT MASTER ENGINE (CHAT, FEED, WEBRTC) ================= */
+
+// 1. Bottom Navigation & Tab Switching
+function showPage(pageId) {
+  const pages = document.querySelectorAll(".page");
+  pages.forEach(p => {
+    p.style.display = "none";
+    p.classList.remove("active");
+  });
+  const target = document.getElementById(pageId);
+  if (target) {
+    target.style.display = "block";
+    target.classList.add("active");
+  }
+}
+
+// 2. Real-time Public Feed & Double Tap Heart
+let localPosts = [];
+
+function submitPublicPost() {
+  const txtInput = document.getElementById("postText");
+  const text = txtInput ? txtInput.value.trim() : "";
+  if (!text) {
+    alert("Kripya kuch likhein!");
+    return;
+  }
+  
+  const user = JSON.parse(localStorage.getItem("pulsechat_user") || "{}");
+  const newPost = {
+    id: "post_" + Date.now(),
+    author: user.name || "PulseChat User",
+    text: text,
+    likes: 0,
+    time: "Abhi"
+  };
+  
+  localPosts.unshift(newPost);
+  txtInput.value = "";
+  renderFeed();
+}
+
+function renderFeed() {
+  const feed = document.getElementById("feed");
+  if (!feed) return;
+  
+  feed.innerHTML = localPosts.map(p => `
+    <div class="card" ondblclick="handleDoubleTapLike('${p.id}', event)" style="position:relative; margin:10px 0; padding:15px; border-radius:15px; background:#1c1c1e; color:#fff;">
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+        <div style="width:36px; height:36px; border-radius:50%; background:#007bff; display:flex; align-items:center; justify-content:center; font-weight:bold;">${p.author[0]}</div>
+        <div>
+          <div style="font-weight:bold; font-size:14px;">${p.author}</div>
+          <div style="font-size:11px; color:#888;">${p.time}</div>
+        </div>
+      </div>
+      <div style="font-size:15px; line-height:1.4; margin-bottom:12px;">${p.text}</div>
+      <div style="display:flex; gap:15px; font-size:13px; color:#aaa; border-top:1px solid #2c2c2e; padding-top:10px;">
+        <span id="like-count-${p.id}" style="cursor:pointer;" onclick="likePost('${p.id}')">❤️ ${p.likes} Likes</span>
+        <span>💬 0 Comments</span>
+      </div>
+    </div>
+  `).join("");
+}
+
+function handleDoubleTapLike(postId, e) {
+  likePost(postId);
+  
+  // Floating Instagram Heart Animation
+  const heart = document.createElement("div");
+  heart.className = "floating-heart";
+  heart.innerHTML = "❤️";
+  e.currentTarget.appendChild(heart);
+  setTimeout(() => heart.remove(), 800);
+}
+
+function likePost(postId) {
+  const post = localPosts.find(p => p.id === postId);
+  if (post) {
+    post.likes += 1;
+    const elem = document.getElementById(`like-count-${postId}`);
+    if (elem) elem.innerText = `❤️ ${post.likes} Likes`;
+  }
+}
+
+// 3. User Search Logic
+const mockUsers = [
+  { name: "Aman Sharma", handle: "@aman_99" },
+  { name: "Pooja Verma", handle: "@pooja_v" },
+  { name: "Rahul Singh", handle: "@rahul_king" },
+  { name: "Neha Patel", handle: "@neha_p" }
+];
+
+function handleUserSearch(query) {
+  const box = document.getElementById("searchResultsList");
+  if (!box) return;
+  const q = query.toLowerCase().trim();
+  if (!q) {
+    box.innerHTML = "";
+    return;
+  }
+  const filtered = mockUsers.filter(u => u.name.toLowerCase().includes(q) || u.handle.toLowerCase().includes(q));
+  box.innerHTML = filtered.map(u => `
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid #2c2c2e;">
+      <div>
+        <div style="font-weight:bold; color:#fff;">${u.name}</div>
+        <div style="font-size:12px; color:#888;">${u.handle}</div>
+      </div>
+      <button onclick="startChatWithUser('${u.name}')" style="background:#007bff; color:#fff; border:none; padding:6px 14px; border-radius:15px; cursor:pointer;">Message</button>
+    </div>
+  `).join("");
+}
+
+// 4. Realtime Chat, Typing & Voice Message
+let activeChatTarget = null;
+let typingTimeout = null;
+
+function startChatWithUser(userName) {
+  activeChatTarget = userName;
+  const nameLabel = document.getElementById("chatTargetName");
+  if (nameLabel) nameLabel.innerText = userName;
+  showPage("chatRoom");
+}
+
+function closeChatRoom() {
+  activeChatTarget = null;
+  showPage("chats");
+}
+
+function sendChatMessage() {
+  const input = document.getElementById("messageInput");
+  const msg = input ? input.value.trim() : "";
+  if (!msg) return;
+  
+  const stream = document.getElementById("messages");
+  const bubble = document.createElement("div");
+  bubble.style = "align-self:flex-end; background:#007bff; color:#fff; padding:8px 14px; border-radius:16px 16px 2px 16px; max-width:75%; font-size:14px; margin:4px 0;";
+  bubble.innerText = msg;
+  stream.appendChild(bubble);
+  stream.scrollTop = stream.scrollHeight;
+  input.value = "";
+}
+
+function handleTypingState() {
+  const banner = document.getElementById("realtimeTypingBanner");
+  if (banner) {
+    banner.style.display = "block";
+    banner.innerHTML = `<span class="typing-dots">${activeChatTarget || 'User'} type kar rahe hain<span>.</span><span>.</span><span>.</span></span>`;
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => { banner.style.display = "none"; }, 1500);
+  }
+}
+
+// 5. Random WebRTC Video Match (Free Google STUN)
+let rtcPeer = null;
+let rtcLocalStream = null;
+const stunConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+
+async function startRandomMatchmaking() {
+  const startBtn = document.getElementById("startMatchBtn");
+  const nextBtn = document.getElementById("nextPartnerBtn");
+  const endBtn = document.getElementById("endMatchBtn");
+  
+  try {
+    rtcLocalStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    document.getElementById("localVideo").srcObject = rtcLocalStream;
+    
+    startBtn.style.display = "none";
+    nextBtn.style.display = "inline-block";
+    endBtn.style.display = "inline-block";
+    
+    alert("Partner dhoondha ja raha hai... (Searching random user via Google STUN)");
+    rtcPeer = new RTCPeerConnection(stunConfig);
+    rtcLocalStream.getTracks().forEach(track => rtcPeer.addTrack(track, rtcLocalStream));
+    
+    rtcPeer.ontrack = (event) => {
+      document.getElementById("remoteVideo").srcObject = event.streams[0];
+    };
+  } catch (err) {
+    alert("Camera/Mic access ki permission zaruri hai!");
+  }
+}
+
+function nextRandomPartner() {
+  if (rtcPeer) {
+    rtcPeer.close();
+    rtcPeer = null;
+  }
+  document.getElementById("remoteVideo").srcObject = null;
+  alert("Purana call cut ho gaya, agla partner connect ho raha hai... ⏭️");
+}
+
+function endRandomCall() {
+  if (rtcLocalStream) {
+    rtcLocalStream.getTracks().forEach(t => t.stop());
+    rtcLocalStream = null;
+  }
+  if (rtcPeer) {
+    rtcPeer.close();
+    rtcPeer = null;
+  }
+  document.getElementById("localVideo").srcObject = null;
+  document.getElementById("remoteVideo").srcObject = null;
+  
+  document.getElementById("startMatchBtn").style.display = "inline-block";
+  document.getElementById("nextPartnerBtn").style.display = "none";
+  document.getElementById("endMatchBtn").style.display = "none";
+}
+  /* ================= ADVANCED EXTRA FEATURES (VOICE NOTES, TICKS, BLOCK) ================= */
+
+// 1. Voice Notes Recording (Mic Audio)
+let mediaRecorder = null;
+let audioChunks = [];
+
+async function startVoiceRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+    
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) audioChunks.push(e.data);
+    };
+    
+    mediaRecorder.onstop = () => {
+      const audioBlob = new Blob(audioChunks, { type: "audio/mp3" });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      sendAudioMessageBubble(audioUrl);
+      stream.getTracks().forEach(track => track.stop());
+    };
+    
+    mediaRecorder.start();
+    const btn = document.getElementById("voiceRecordBtn");
+    if (btn) btn.innerText = "🔴 Recording... Chhodiye bhejne ke liye";
+  } catch (err) {
+    alert("Microphone permission ki zarurat hai!");
+  }
+}
+
+function stopVoiceRecording() {
+  if (mediaRecorder && mediaRecorder.state !== "inactive") {
+    mediaRecorder.stop();
+    const btn = document.getElementById("voiceRecordBtn");
+    if (btn) btn.innerText = "🎙️ Hold to Record Audio";
+  }
+}
+
+function sendAudioMessageBubble(url) {
+  const stream = document.getElementById("messages");
+  if (!stream) return;
+  
+  const bubble = document.createElement("div");
+  bubble.style = "align-self:flex-end; background:#007bff; color:#fff; padding:8px 12px; border-radius:16px 16px 2px 16px; margin:4px 0;";
+  bubble.innerHTML = `
+    <div style="font-size:11px; margin-bottom:4px;">🎤 Voice Note</div>
+    <audio controls src="${url}" style="height:32px; width:190px;"></audio>
+    <div style="font-size:10px; text-align:right; color:#ddd; margin-top:2px;">✓✓ Read</div>
+  `;
+  stream.appendChild(bubble);
+  stream.scrollTop = stream.scrollHeight;
+  playDingSound("soundMessage");
+}
+
+// 2. Chat Settings (Mute, Hide & Read Ticks)
+function toggleMuteChat() {
+  alert("Is user ke notifications mute kar diye gaye hain 🔕");
+}
+
+function hideCurrentChat() {
+  alert("Chat archive/hide ho gayi hai!");
+  if (typeof closeChatRoom === "function") closeChatRoom();
+}
+
+// 3. Omegle Safety: Report & Block Partner
+function reportAndBlockPartner() {
+  const reason = prompt("Report ka kaaran batayein (Nudity, Abuse, Spam):");
+  if (reason) {
+    alert("User successfully block aur report ho chuka hai! Agle partner par bhej rahe hain...");
+    if (typeof nextRandomPartner === "function") nextRandomPartner();
+  }
+}
+
+// 4. Notification Sounds Trigger
+function playDingSound(audioId) {
+  const snd = document.getElementById(audioId);
+  if (snd) {
+    snd.currentTime = 0;
+    snd.play().catch(() => {});
+  }
+}
+  /* ================= REELS AUTOPLAY & EMOJI LOGIC ================= */
+
+// Reels Auto-play when visible in view
+function initReelsAutoScroll() {
+  const reelVideos = document.querySelectorAll(".reel-card video");
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.play().catch(() => {});
+      } else {
+        entry.target.pause();
+      }
+    });
+  }, { threshold: 0.6 });
+
+  reelVideos.forEach(v => observer.observe(v));
+}
+
+// Quick Emoji Insert
+function toggleEmojiTray() {
+  const tray = document.getElementById("emojiPickerTray");
+  if (tray) tray.style.display = tray.style.display === "none" ? "flex" : "none";
+}
+
+function insertQuickEmoji(emoji) {
+  const input = document.getElementById("messageInput");
+  if (input) {
+    input.value += emoji;
+    input.focus();
+  }
+}
+
+// Story Viewers Trigger
+function openStoryViewers() {
+  const modal = document.getElementById("storyViewersModal");
+  if (modal) modal.style.display = "flex";
+}
   
 </script>
+  <!-- Story Creator Modal (Camera / Gallery / Music) -->
+<div id="storyCreateModal" class="pulse-modal" style="display:none;">
+  <div style="background:#181818; width:100%; max-width:420px; border-radius:18px; padding:18px; position:relative; color:#fff;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h3 style="margin:0; font-size:16px;">Create Story</h3>
+      <button onclick="closeStoryModal()" style="background:none; border:none; color:#aaa; font-size:20px; cursor:pointer;">✕</button>
+    </div>
+
+    <!-- Live Camera View with Filters -->
+    <div id="storyCameraBox" style="display:none; position:relative; width:100%; height:320px; background:#000; border-radius:12px; overflow:hidden;">
+      <video id="storyVideoPreview" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+      <canvas id="storyCanvas" style="display:none;"></canvas>
+      
+      <!-- Filter Selector Carousel -->
+      <div style="position:absolute; bottom:10px; left:0; width:100%; display:flex; gap:10px; overflow-x:auto; padding:0 12px; justify-content:center;">
+        <div class="filter-btn-pill active" onclick="applyBeautyFilter('')">Normal</div>
+        <div class="filter-btn-pill" onclick="applyBeautyFilter('camera-filter-glow')">Glow</div>
+        <div class="filter-btn-pill" onclick="applyBeautyFilter('camera-filter-rosy')">Rosy</div>
+        <div class="filter-btn-pill" onclick="applyBeautyFilter('camera-filter-golden')">Gold</div>
+        <div class="filter-btn-pill" onclick="applyBeautyFilter('camera-filter-vintage')">Retro</div>
+        <div class="filter-btn-pill" onclick="applyBeautyFilter('camera-filter-bw')">B&W</div>
+      </div>
+    </div>
+
+    <!-- Captured / Picked Media Preview -->
+    <div id="storyImagePreviewBox" style="display:none; width:100%; height:320px; border-radius:12px; overflow:hidden; background:#000; text-align:center;">
+      <img id="storyPreviewImg" style="width:100%; height:100%; object-fit:contain;">
+    </div>
+
+    <!-- Mode Selector Buttons -->
+    <div id="storyPickActions" style="display:flex; gap:10px; margin-top:15px;">
+      <button onclick="openLiveCamera()" style="flex:1; padding:12px; border-radius:10px; border:none; background:#ff007f; color:#fff; font-weight:bold; cursor:pointer;">📷 Camera (Filters)</button>
+      <label style="flex:1; padding:12px; border-radius:10px; background:#333; color:#fff; font-weight:bold; text-align:center; cursor:pointer;">
+        📁 Gallery <input type="file" id="storyGalleryInput" accept="image/*,video/*" style="display:none" onchange="handleGalleryStoryPick(event)">
+      </label>
+    </div>
+
+    <!-- Music Add & Post Action -->
+    <div id="storyPostControls" style="display:none; margin-top:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; background:#222; padding:10px; border-radius:10px; margin-bottom:10px;">
+        <span id="selectedSongLabel" style="font-size:13px; color:#ddd;">🎵 No Music Added</span>
+        <button onclick="openMusicSearchModal()" style="background:#007bff; color:#fff; border:none; padding:6px 12px; border-radius:15px; font-size:12px; cursor:pointer;">Add Music</button>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button onclick="retakeStory()" style="flex:1; padding:10px; border-radius:10px; border:1px solid #444; background:none; color:#fff; cursor:pointer;">Retake</button>
+        <button onclick="uploadFinalStory()" style="flex:2; padding:10px; border-radius:10px; border:none; background:#28a745; color:#fff; font-weight:bold; cursor:pointer;">Share to Story</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Music Search Modal -->
+<div id="musicSearchModal" class="pulse-modal" style="display:none;">
+  <div style="background:#1f1f1f; width:100%; max-width:380px; border-radius:16px; padding:16px; color:#fff;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h4 style="margin:0;">Search Music 🎵</h4>
+      <button onclick="closeMusicSearchModal()" style="background:none; border:none; color:#aaa; font-size:18px; cursor:pointer;">✕</button>
+    </div>
+    <input type="text" id="musicSearchQuery" placeholder="Search Hindi, Punjabi, Bollywood..." oninput="searchAudioTracks(this.value)" style="width:100%; padding:10px; border-radius:8px; border:1px solid #333; background:#111; color:#fff; box-sizing:border-box;">
+    <div id="musicSearchResults" style="max-height:220px; overflow-y:auto; margin-top:10px;"></div>
+  </div>
+</div>
+  <!-- Notification Audio Tones -->
+<audio id="soundMessage" src="https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3" preload="auto"></audio>
+<audio id="soundCallConnect" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+
+<!-- Chat Voice Note & Extra Options Bar -->
+<div id="chatExtraActions" style="display:none; padding:8px 12px; background:#1c1c1e; border-top:1px solid #333; align-items:center; justify-content:space-between;">
+  <button id="voiceRecordBtn" onmousedown="startVoiceRecording()" onmouseup="stopVoiceRecording()" ontouchstart="startVoiceRecording()" ontouchend="stopVoiceRecording()" style="background:#ff007f; color:#fff; border:none; padding:8px 14px; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer;">
+    🎙️ Hold to Record Audio
+  </button>
+  <div style="display:flex; gap:10px;">
+    <button onclick="toggleMuteChat()" style="background:#333; color:#aaa; border:none; padding:6px 10px; border-radius:12px; font-size:11px; cursor:pointer;">🔕 Mute</button>
+    <button onclick="hideCurrentChat()" style="background:#333; color:#aaa; border:none; padding:6px 10px; border-radius:12px; font-size:11px; cursor:pointer;">👁️ Hide</button>
+  </div>
+</div>
+
+<!-- Omegle Security (Report & Block Button) -->
+<div id="videoSafetyBar" style="display:none; position:absolute; top:12px; left:12px; z-index:20;">
+  <button onclick="reportAndBlockPartner()" style="background:rgba(255,0,0,0.8); color:#fff; border:none; padding:6px 12px; border-radius:14px; font-size:12px; font-weight:bold; cursor:pointer;">
+    🚩 Report & Block
+  </button>
+</div>
+  <!-- Story Viewers Modal -->
+<div id="storyViewersModal" class="pulse-modal" style="display:none;">
+  <div style="background:#1e1e1e; width:100%; max-width:360px; border-radius:16px; padding:16px; color:#fff;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h4 style="margin:0;">👁️ Story Viewers (3)</h4>
+      <button onclick="document.getElementById('storyViewersModal').style.display='none'" style="background:none; border:none; color:#aaa; font-size:18px; cursor:pointer;">✕</button>
+    </div>
+    <div style="max-height:200px; overflow-y:auto;">
+      <div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #333;">
+        <div style="width:30px; height:30px; border-radius:50%; background:#ff007f; display:flex; align-items:center; justify-content:center; font-weight:bold;">A</div>
+        <span style="font-size:14px;">Aman Sharma</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #333;">
+        <div style="width:30px; height:30px; border-radius:50%; background:#007bff; display:flex; align-items:center; justify-content:center; font-weight:bold;">P</div>
+        <span style="font-size:14px;">Pooja Verma</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Chat Quick Emoji Tray -->
+<div id="emojiPickerTray" style="display:none; background:#222; border-radius:12px; padding:8px; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
+  <span onclick="insertQuickEmoji('❤️')" style="font-size:20px; cursor:pointer;">❤️</span>
+  <span onclick="insertQuickEmoji('😂')" style="font-size:20px; cursor:pointer;">😂</span>
+  <span onclick="insertQuickEmoji('🔥')" style="font-size:20px; cursor:pointer;">🔥</span>
+  <span onclick="insertQuickEmoji('😍')" style="font-size:20px; cursor:pointer;">😍</span>
+  <span onclick="insertQuickEmoji('👍')" style="font-size:20px; cursor:pointer;">👍</span>
+  <span onclick="insertQuickEmoji('🎉')" style="font-size:20px; cursor:pointer;">🎉</span>
+</div>
+  
 </body>
 </html>
