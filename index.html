@@ -1803,6 +1803,43 @@ function toggleFollowUser(targetHandle) {
   });
 }
   
+  // Live Typing Indicator & Tone Engine
+function handleUserTyping() {
+  if (!currentChatPartner || typeof db === "undefined" || !db) return;
+  const roomId = getChatRoomId();
+  const currentUser = JSON.parse(localStorage.getItem("pulsechat_user")) || { name: "Me" };
+  
+  db.ref("typing/" + roomId).set({
+    typingUser: currentUser.name,
+    timestamp: Date.now()
+  });
+}
+
+// Typing listener for current active chat
+function listenForTyping() {
+  if (!currentChatPartner || typeof db === "undefined" || !db) return;
+  const roomId = getChatRoomId();
+  const banner = document.getElementById("realtimeTypingBanner");
+
+  db.ref("typing/" + roomId).on("value", (snap) => {
+    const data = snap.val();
+    const currentUser = JSON.parse(localStorage.getItem("pulsechat_user")) || { name: "Me" };
+    if (data && data.typingUser !== currentUser.name && (Date.now() - data.timestamp < 3000)) {
+      if (banner) {
+        banner.style.display = "block";
+        banner.innerHTML = `<span style="font-size:12px; color:#007bff;">${data.typingUser} टाइप कर रहे हैं...</span>`;
+      }
+    } else {
+      if (banner) banner.style.display = "none";
+    }
+  });
+}
+
+// Input box ke sath typing trigger link karein
+const msgBox = document.getElementById("messageInput");
+if (msgBox) {
+  msgBox.addEventListener("input", handleUserTyping);
+}
   
 </script>
   <!-- Story Creator Modal (Camera / Gallery / Music) -->
@@ -1917,6 +1954,12 @@ function toggleFollowUser(targetHandle) {
   <span onclick="insertQuickEmoji('👍')" style="font-size:20px; cursor:pointer;">👍</span>
   <span onclick="insertQuickEmoji('🎉')" style="font-size:20px; cursor:pointer;">🎉</span>
 </div>
+  <!-- PulseChat Essential UI Triggers -->
+<input type="file" id="feedImageInput" accept="image/*" style="display:none;" onchange="uploadMediaPost(this)">
+<input type="file" id="storyInput" accept="image/*" style="display:none;" onchange="uploadUserStory(this)">
+
+<!-- Real Audio Sound for New Messages -->
+<audio id="chatNotifyAudio" src="https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3" preload="auto"></audio>
   
 </body>
 </html>
