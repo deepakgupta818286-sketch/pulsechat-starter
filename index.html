@@ -1277,46 +1277,100 @@ function handleUserSearch(query) {
   }
       }
   
+/* ================= 100% REAL FIREBASE: USER SYNC & 1-ON-1 CHAT ================= */
 
-// 4. Realtime Chat, Typing & Voice Message
-let activeChatTarget = null;
-let typingTimeout = null;
+// 1. ऑटो यूजर रजिस्ट्रेशन
+function initAutoUserRegistration() {
+  let user = JSON.parse(localStorage.getItem("pulsechat_user"));
+  if (!user || !user.name) {
+    const promptName = prompt("PulseChat में आपका स्वागत है! अपना नाम लिखें:") || "User_" + Math.floor(100 + Math.random() * 900);
+    const promptHandle = "@" + promptName.toLowerCase().replace(/\s+/g, "_") + "_" + Math.floor(10 + Math.random() * 90);
+    user = { name: promptName, handle: promptHandle };
+    localStorage.setItem("pulsechat_user", JSON.stringify(user));
+  }
+  
+  if (typeof db !== "undefined" && db) {
+    const userKey = user.handle.replace(/[^a-zA-Z0-9]/g, "_");
+    db.ref("registered_users/" + userKey).set({
+      name: user.name,
+      handle: user.handle,
+      status: "online",
+      lastActive: Date.now()
+    });
+  }
+}
+window.addEventListener("DOMContentLoaded", initAutoUserRegistration);
 
-function startChatWithUser(userName) {
-  activeChatTarget = userName;
+// 2. 1-ऑन-1 रियल टाइम चैट इंजन
+let currentChatPartner = null;
+let chatListenerRef = null;
+
+function startChatWithUser(partnerName) {
+  currentChatPartner = partnerName;
   const nameLabel = document.getElementById("chatTargetName");
-  if (nameLabel) nameLabel.innerText = userName;
-  showPage("chatRoom");
+  if (nameLabel) nameLabel.innerText = partnerName;
+  
+  if (typeof showPage === "function") showPage("chatRoom");
+  loadRealtimeMessages();
 }
 
-function closeChatRoom() {
-  activeChatTarget = null;
-  showPage("chats");
+function getChatRoomId() {
+  const currentUser = JSON.parse(localStorage.getItem("pulsechat_user")) || { name: "Me" };
+  const users = [currentUser.name, currentChatPartner].sort();
+  return users[0].replace(/[^a-zA-Z0-9]/g, "_") + "__" + users[1].replace(/[^a-zA-Z0-9]/g, "_");
 }
 
 function sendChatMessage() {
   const input = document.getElementById("messageInput");
   const msg = input ? input.value.trim() : "";
-  if (!msg) return;
-  
-  const stream = document.getElementById("messages");
-  const bubble = document.createElement("div");
-  bubble.style = "align-self:flex-end; background:#007bff; color:#fff; padding:8px 14px; border-radius:16px 16px 2px 16px; max-width:75%; font-size:14px; margin:4px 0;";
-  bubble.innerText = msg;
-  stream.appendChild(bubble);
-  stream.scrollTop = stream.scrollHeight;
-  input.value = "";
+  if (!msg || !currentChatPartner || typeof db === "undefined" || !db) return;
+
+  const currentUser = JSON.parse(localStorage.getItem("pulsechat_user")) || { name: "Me" };
+  const roomId = getChatRoomId();
+
+  db.ref("chats/" + roomId).push({
+    sender: currentUser.name,
+    text: msg,
+    timestamp: Date.now(),
+    time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  }, (err) => {
+    if (!err && input) input.value = "";
+  });
 }
 
-function handleTypingState() {
-  const banner = document.getElementById("realtimeTypingBanner");
-  if (banner) {
-    banner.style.display = "block";
-    banner.innerHTML = `<span class="typing-dots">${activeChatTarget || 'User'} type kar rahe hain<span>.</span><span>.</span><span>.</span></span>`;
-    clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(() => { banner.style.display = "none"; }, 1500);
-  }
+function loadRealtimeMessages() {
+  const stream = document.getElementById("messages");
+  if (!stream || typeof db === "undefined" || !db || !currentChatPartner) return;
+
+  const roomId = getChatRoomId();
+  if (chatListenerRef) chatListenerRef.off();
+
+  chatListenerRef = db.ref("chats/" + roomId);
+  chatListenerRef.on("value", (snapshot) => {
+    stream.innerHTML = "";
+    const data = snapshot.val();
+    if (!data) return;
+
+    const currentUser = JSON.parse(localStorage.getItem("pulsechat_user")) || { name: "Me" };
+
+    Object.values(data).forEach((m) => {
+      const isMe = m.sender === currentUser.name;
+      const bubble = document.createElement("div");
+      bubble.style.alignSelf = isMe ? "flex-end" : "flex-start";
+      bubble.style.background = isMe ? "#007bff" : "#2c2c2e";
+      bubble.style.color = "#fff";
+      bubble.style.padding = "8px 14px";
+      bubble.style.borderRadius = "14px";
+      bubble.style.maxWidth = "75%";
+      bubble.style.marginBottom = "8px";
+      bubble.style.fontSize = "14px";
+      bubble.innerText = m.text;
+      stream.appendChild(bubble);
+    });
+    stream.scrollTop = stream.scrollHeight;
+  });
 }
+  
 
 // 5. Random WebRTC Video Match (Free Google STUN)
 let rtcPeer = null;
