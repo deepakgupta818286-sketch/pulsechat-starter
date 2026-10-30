@@ -36,8 +36,7 @@ input,textarea{font:inherit;width:100%;padding:12px;border:1px solid #dbe2ea;bor
 video{width:100%;background:#05070b;border-radius:18px;max-height:60vh;object-fit:cover}.video-wrap{position:relative}.local{position:absolute;width:100px;height:145px;right:12px;top:12px;border:2px solid white}.call-controls{display:flex;justify-content:center;gap:9px;margin-top:10px}.call-controls button{width:50px;height:50px;border:0;border-radius:50%}.end{background:#ef4444;color:white}
 @media(max-width:480px){.welcome h1{font-size:23px}.nav-btn{font-size:8px}.nav-icon{font-size:19px}}
 </style>
-  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-  
+
   
 </head>
 <body>
@@ -55,8 +54,9 @@ video{width:100%;background:#05070b;border-radius:18px;max-height:60vh;object-fi
 
 <div id="recaptcha-container"></div>
   
-<button onclick="login()">Login करें</button>
-<button class="btn soft" style="width:100%;margin-top:9px;padding:14px" onclick="signup()">नया अकाउंट बनाएं / Sign Up</button>
+<button onclick="alert('Login button chal gaya!'); login();">Login करें</button>
+<button class="btn soft" style="width:100%;margin-top:9px;padding:14px" onclick="alert('Signup button chal gaya!'); signup();">नया अकाउंट बनाएं / Sign Up</button>
+  
   <p style="margin-top:10px;text-align:right;"><a href="javascript:void(0)" onclick="forgotPassword()" style="color:#1677ff;font-size:13px;text-decoration:none;">Forgot Password?</a></p>
   
 </div></div>
