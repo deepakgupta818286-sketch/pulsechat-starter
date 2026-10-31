@@ -288,6 +288,49 @@ async function forgotPassword() {
   }
 }
   
+  // --- Login Function ---
+async function login() {
+  const email = document.getElementById("loginEmail")?.value.trim();
+  const pass = document.getElementById("loginPassword")?.value.trim();
+
+  if (!email || !pass) {
+    alert("कृपया ईमेल और पासवर्ड दोनों दर्ज करें!");
+    return;
+  }
+
+  try {
+    const userCredential = await auth.signInWithEmailAndPassword(email, pass);
+    alert("लॉगिन सफल रहा!");
+  } catch (err) {
+    alert("लॉगिन विफल: " + err.message);
+  }
+}
+
+// --- SignUp Function ---
+async function signup() {
+  const name = document.getElementById("loginName")?.value.trim();
+  const email = document.getElementById("loginEmail")?.value.trim();
+  const pass = document.getElementById("loginPassword")?.value.trim();
+
+  if (!email || !pass) {
+    alert("कृपया ईमेल और पासवर्ड दोनों दर्ज करें!");
+    return;
+  }
+  if (pass.length < 6) {
+    alert("पासवर्ड कम से कम 6 अक्षरों का होना चाहिए!");
+    return;
+  }
+
+  try {
+    const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
+    if (name && userCredential.user) {
+      await userCredential.user.updateProfile({ displayName: name });
+    }
+    alert("खाता सफलतापूर्वक बन गया!");
+  } catch (err) {
+    alert("साइन अप विफल: " + err.message);
+  }
+}
   
 let confirmationResult = null;
 let isOtpPending = false;
