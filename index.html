@@ -2019,6 +2019,9 @@ function listenToCommentsWithReplies(itemId, containerId, inputFieldId, isReel =
     }).join("");
   });
 }
+  window.onerror = function(msg, url, line) {
+  alert("Error mila: " + msg + " (Line: " + line + ")");
+};
   
 </script>
   <!-- Story Creator Modal (Camera / Gallery / Music) -->
