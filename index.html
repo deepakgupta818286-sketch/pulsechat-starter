@@ -131,16 +131,18 @@
       <h2 style="color: #38bdf8; margin-bottom: 4px;">Naya Account Banayein</h2>
       <p style="font-size: 13px; color: #94a3b8; margin-bottom: 16px;">Gmail aur Mobile Number poori tarah Private rahenge 🔒</p>
 
-      <div class="form-group"><label>Poora Naam</label><input type="text" id="signup-name" placeholder="Deepak Gupta" autocomplete="name"></div>
-      <div class="form-group"><label>Username</label><input type="text" id="signup-username" placeholder="deepak_01" autocomplete="username"></div>
-      <div class="form-group"><label>Email Address</label><input type="email" id="signup-email" placeholder="apna@gmail.com" autocomplete="email"></div>
-      <div class="form-group">
-        <label>Mobile Number (+91 India)</label>
-        <div style="display: flex; gap: 6px;">
-          <span style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 11px 12px; color: #38bdf8; font-weight: 600;">+91</span>
-          <input type="tel" id="signup-phone" placeholder="9876543210" maxlength="10" inputmode="numeric" autocomplete="tel-national">
-        </div>
+          <div class="form-group"><label>Poora Naam</label><input type="text" id="signup-name" class="input-field" placeholder="e.g. Rahul Sharma"></div>
+    <div class="form-group"><label>Username</label><input type="text" id="signup-username" class="input-field" placeholder="e.g. rahul_99"></div>
+    <div class="form-group"><label>Email Address</label><input type="email" id="signup-email" class="input-field" placeholder="name@example.com"></div>
+    <div class="form-group">
+      <label>Mobile Number (+91 India)</label>
+      <div style="display: flex; gap: 6px;">
+        <span style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 10px 14px; color: #94a3b8; font-size: 14px; display: flex; align-items: center;">+91</span>
+        <input type="tel" id="signup-phone" class="input-field" placeholder="98765 43210" maxlength="10" inputmode="numeric" style="flex: 1;">
       </div>
+    </div>
+      
+      
       <div class="form-group"><label>Password</label><input type="password" id="signup-password" placeholder="Min 6 characters" autocomplete="new-password"></div>
       <div class="form-group"><label>Confirm Password</label><input type="password" id="signup-confirm-password" placeholder="Re-enter password" autocomplete="new-password"></div>
 
@@ -179,7 +181,50 @@
         </div>
       </div>
       <input type="file" id="story-file-input" accept="image/*,video/*" class="hidden">
+<!-- Professional Story Upload with Real Music Search Modal -->
+<div id="story-upload-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); backdrop-filter:blur(8px); z-index:9999; align-items:center; justify-content:center; padding:16px;">
+  <div style="background:#0f172a; border:1px solid #1e293b; border-radius:18px; padding:20px; width:100%; max-width:390px; box-shadow:0 25px 50px rgba(0,0,0,0.7); max-height:90vh; display:flex; flex-direction:column;">
+    
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h3 style="color:#38bdf8; font-size:16px; margin:0; display:flex; align-items:center; gap:6px;">🎵 Add Story & Music</h3>
+      <button id="btn-cancel-story" style="background:none; border:none; color:#94a3b8; font-size:20px; cursor:pointer;">✕</button>
+    </div>
 
+    <!-- Media Preview -->
+    <div id="story-preview-container" style="width:100%; height:160px; background:#1e293b; border-radius:12px; margin-bottom:12px; overflow:hidden; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+      <span style="color:#94a3b8; font-size:12px;">Preview</span>
+    </div>
+
+    <!-- Selected Track Display Card -->
+    <div id="selected-music-badge" style="display:none; background:#1e293b; border:1px solid #38bdf8; border-radius:10px; padding:8px 12px; margin-bottom:10px; align-items:center; justify-content:space-between;">
+      <div style="display:flex; align-items:center; gap:8px; overflow:hidden;">
+        <span style="font-size:18px;">🎶</span>
+        <div style="text-align:left; overflow:hidden;">
+          <strong id="selected-track-name" style="display:block; color:#f8fafc; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Song Name</strong>
+          <small id="selected-track-artist" style="color:#94a3b8; font-size:10px;">Artist</small>
+        </div>
+      </div>
+      <button id="btn-remove-selected-music" style="background:none; border:none; color:#ef4444; font-size:16px; cursor:pointer;">✕</button>
+    </div>
+
+    <!-- Music Search Box -->
+    <div style="margin-bottom:8px;">
+      <div style="display:flex; gap:6px;">
+        <input type="text" id="music-search-query" placeholder="Search Hindi, Punjabi, English songs..." class="input-field" style="flex:1; padding:8px 10px; font-size:12px; background:#1e293b; border:1px solid #334155; border-radius:8px; color:#fff;">
+        <button id="btn-search-music" style="padding:8px 12px; background:#0284c7; color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:12px;">Search</button>
+      </div>
+    </div>
+
+    <!-- Music Search Results List -->
+    <div id="music-search-results" style="flex:1; overflow-y:auto; max-height:150px; background:#0b1120; border-radius:10px; padding:6px; margin-bottom:14px; border:1px solid #1e293b;">
+      <div style="text-align:center; padding:20px 0; color:#64748b; font-size:11px;">Search a song to play & add to story</div>
+    </div>
+
+    <button id="btn-publish-story" style="width:100%; padding:10px; background:#0284c7; color:#fff; border:none; border-radius:10px; font-weight:600; font-size:14px; cursor:pointer;">Share Story</button>
+  </div>
+</div>
+      
+      
       <div class="post-card">
         <textarea id="post-input-text" rows="2" placeholder="Share something new..."></textarea>
         <label style="margin-top: 6px;">Gallery Media:</label>
@@ -197,15 +242,73 @@
         <div id="chat-users-directory"></div>
       </div>
       <div id="chat-conversation-pane" class="hidden">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-          <button class="btn btn-secondary" id="btn-back-to-contacts" style="width: auto; padding: 4px 10px; margin:0;">← Back</button>
-          <strong id="active-peer-name" style="color: #38bdf8; font-size:14px;">Chat</strong>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button class="btn btn-secondary" id="btn-back-to-contacts" style="width:auto; padding:6px 10px; margin:0;">Back</button>
+          
+        <strong id="active-peer-name" style="color:#38bdf8; font-size:14px;">Chat</strong>
+          <span id="active-peer-status" style="display:block; font-size:11px; color:#94a3b8;">Offline</span>
+          
         </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button id="btn-toggle-mute" style="background:#1e293b; border:1px solid #334155; color:#94a3b8; border-radius:8px; padding:6px 10px; cursor:pointer; font-size:12px;"><span id="mute-icon">🔔</span> <span id="mute-text">Mute</span></button>
+          <button id="btn-block-chat-user" style="background:#ef4444; border:none; color:#ffffff; border-radius:8px; padding:6px 10px; cursor:pointer; font-size:12px; font-weight:500;">Block</button>
+        </div>
+              </div>
+        
         <div class="chat-box" id="private-chat-stream"></div>
+        <!-- Mega Emoji Picker Tray -->
+<div id="chat-emoji-picker" style="display:none; background:#0f172a; border:1px solid #1e293b; border-radius:14px; padding:10px; max-height:140px; overflow-y:auto; gap:8px; flex-wrap:wrap; margin-bottom:8px; box-shadow:0 10px 25px rgba(0,0,0,0.5);">
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">❤️</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">💖</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">💕</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">💓</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">🥰</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">😍</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">😘</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">💋</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">🥀</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">🌹</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">😡</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">😠</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">🤬</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">😤</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">👿</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">🔥</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">😂</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">🤣</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">😎</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">😏</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">😜</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">🥺</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">😭</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">😢</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">💔</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">😔</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">👍</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">👎</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">👏</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">🙌</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">🙏</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">🤝</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">✌️</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">💯</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">✨</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">🎉</span>
+  <span class="emoji-item" style="font-size:22px; cursor:pointer;">👑</span>
+</div>
+        
         <div style="display:flex; gap:6px; align-items:center;">
+          <button type="button" id="btn-toggle-emoji" style="background:none; border:none; font-size:20px; cursor:pointer; padding:4px;">😊</button>
+          
           <input type="text" id="private-chat-input" placeholder="Type message...">
           <button class="btn" id="btn-send-private" style="width:60px; padding:10px 4px;">Send</button>
-          <button class="voice-record-btn" id="btn-record-voice">🎙️</button>
+          <button class="voice-record-btn" id="btn-record-voice" title="Click to record voice" style="display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:50%; background:#ef4444; border:none; cursor:pointer; color:#ffffff; padding:0; flex-shrink:0;">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+  </svg> 
+          </button>
         </div>
         <div class="status-msg" id="voice-status-txt"></div>
       </div>
@@ -1276,6 +1379,300 @@ hlSaveBtn.addEventListener("click", async () => {
       const isLight = document.body.classList.contains("light-theme");
       el("btn-theme-toggle").textContent = isLight ? "☀️ Light Mode" : "🌙 Dark Mode";
     });
+    // Open User Profile Modal Function
+async function openUserProfile(targetUid) {
+  if (!targetUid) return;
+  const modal = el("user-profile-modal");
+  const avatarEl = el("modal-user-avatar");
+  const nameEl = el("modal-user-name");
+  const handleEl = el("modal-user-handle");
+  const bioEl = el("modal-user-bio");
+  const postsCount = el("modal-user-posts");
+  const followersCount = el("modal-user-followers");
+  const followingCount = el("modal-user-following");
+
+  if (!modal) return;
+  modal.style.display = "flex";
+  nameEl.textContent = "Loading...";
+
+  try {
+    const userDoc = await db.collection("users").doc(targetUid).get();
+    if (!userDoc.exists) {
+      alert("User nahi mila.");
+      modal.style.display = "none";
+      return;
+    }
+
+    const u = userDoc.data();
+    nameEl.textContent = u.fullName || "User";
+    handleEl.textContent = "@" + (u.username || "user");
+    bioEl.textContent = u.bio || "No bio available.";
+
+    if (u.photoURL) {
+      avatarEl.innerHTML = `<img src="${u.photoURL}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+    } else {
+      avatarEl.innerHTML = (u.fullName || "U")[0].toUpperCase();
+    }
+
+    followersCount.textContent = (u.followers && u.followers.length) || 0;
+    followingCount.textContent = (u.following && u.following.length) || 0;
+
+    const postsSnap = await db.collection("posts").where("authorUid", "==", targetUid).get();
+    postsCount.textContent = postsSnap.size;
+  } catch (err) {
+    console.error("Profile load error:", err);
+  }
+}
+
+const closeProfileBtn = el("modal-close-user-profile");
+if (closeProfileBtn) {
+  closeProfileBtn.addEventListener("click", () => {
+    el("user-profile-modal").style.display = "none";
+  });
+}
+    // Real Music Search & Story Upload Engine
+let selectedStoryMedia = null;
+let currentSelectedTrack = null;
+let musicAudioPreview = new Audio();
+
+const storyFileInput = el("story-file-input");
+const storyModal = el("story-upload-modal");
+const previewBox = el("story-preview-container");
+const musicSearchInput = el("music-search-query");
+const musicResultsBox = el("music-search-results");
+const selectedBadge = el("selected-music-badge");
+
+// 1. File choose hote hi modal kholna
+if (storyFileInput) {
+  storyFileInput.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    selectedStoryMedia = file;
+
+    const fileURL = URL.createObjectURL(file);
+    if (file.type.startsWith("video")) {
+      previewBox.innerHTML = `<video src="${fileURL}" autoplay muted loop style="width:100%; height:100%; object-fit:cover;"></video>`;
+    } else {
+      previewBox.innerHTML = `<img src="${fileURL}" style="width:100%; height:100%; object-fit:cover;">`;
+    }
+
+    currentSelectedTrack = null;
+    selectedBadge.style.display = "none";
+    musicResultsBox.innerHTML = `<div style="text-align:center; padding:20px 0; color:#64748b; font-size:11px;">Search trending songs (Arijit, Sidhu, Diljit...)</div>`;
+    storyModal.style.display = "flex";
+  });
+}
+
+// 2. Real iTunes Search API se Music khojna
+async function searchRealMusic(query) {
+  if (!query.trim()) return;
+  musicResultsBox.innerHTML = `<div style="text-align:center; padding:15px; color:#38bdf8; font-size:12px;">Searching songs...</div>`;
+
+  try {
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=music&entity=song&limit=15`);
+    const data = await res.json();
+
+    if (!data.results || data.results.length === 0) {
+      musicResultsBox.innerHTML = `<div style="text-align:center; padding:15px; color:#ef4444; font-size:12px;">Koi song nahi mila. Dusra search karein!</div>`;
+      return;
+    }
+
+    musicResultsBox.innerHTML = "";
+    data.results.forEach((song) => {
+      const item = document.createElement("div");
+      item.style = "display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border-bottom:1px solid #1e293b; cursor:pointer;";
+      item.innerHTML = `
+        <div style="display:flex; align-items:center; gap:8px; overflow:hidden; flex:1;">
+          <img src="${song.artworkUrl60 || song.artworkUrl30}" style="width:36px; height:36px; border-radius:6px; object-fit:cover;">
+          <div style="overflow:hidden; text-align:left;">
+            <div style="color:#f8fafc; font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${song.trackName}</div>
+            <div style="color:#94a3b8; font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${song.artistName}</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <button class="preview-btn" style="background:#334155; border:none; color:#38bdf8; border-radius:50%; width:28px; height:28px; cursor:pointer; font-size:10px;">▶</button>
+          <button class="select-btn" style="background:#0284c7; border:none; color:#fff; border-radius:6px; padding:4px 8px; font-size:11px; cursor:pointer;">Add</button>
+        </div>
+      `;
+
+      // Preview audio sunne ke liye
+      const pBtn = item.querySelector(".preview-btn");
+      pBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        if (musicAudioPreview.src === song.previewUrl && !musicAudioPreview.paused) {
+          musicAudioPreview.pause();
+          pBtn.textContent = "▶";
+        } else {
+          musicAudioPreview.src = song.previewUrl;
+          musicAudioPreview.play();
+          document.querySelectorAll(".preview-btn").forEach(b => b.textContent = "▶");
+          pBtn.textContent = "⏸";
+        }
+      });
+
+      // Song ko story ke liye select karna
+      const sBtn = item.querySelector(".select-btn");
+      sBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        musicAudioPreview.pause();
+        currentSelectedTrack = {
+          name: song.trackName,
+          artist: song.artistName,
+          audioUrl: song.previewUrl,
+          cover: song.artworkUrl100
+        };
+        el("selected-track-name").textContent = song.trackName;
+        el("selected-track-artist").textContent = song.artistName;
+        selectedBadge.style.display = "flex";
+      });
+
+      musicResultsBox.appendChild(item);
+    });
+  } catch (err) {
+    musicResultsBox.innerHTML = `<div style="text-align:center; padding:15px; color:#ef4444; font-size:12px;">Search failed. Internet check karein.</div>`;
+  }
+}
+
+// Search Button & Enter Key Trigger
+if (el("btn-search-music")) {
+  el("btn-search-music").addEventListener("click", () => searchRealMusic(musicSearchInput.value));
+}
+if (musicSearchInput) {
+  musicSearchInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") searchRealMusic(musicSearchInput.value);
+  });
+}
+
+// Selected song hatana
+if (el("btn-remove-selected-music")) {
+  el("btn-remove-selected-music").addEventListener("click", () => {
+    currentSelectedTrack = null;
+    selectedBadge.style.display = "none";
+    musicAudioPreview.pause();
+  });
+}
+
+// Cancel modal
+if (el("btn-cancel-story")) {
+  el("btn-cancel-story").addEventListener("click", () => {
+    storyModal.style.display = "none";
+    selectedStoryMedia = null;
+    currentSelectedTrack = null;
+    musicAudioPreview.pause();
+    storyFileInput.value = "";
+  });
+}
+
+// 3. Story ko Database mein publish karna
+if (el("btn-publish-story")) {
+  el("btn-publish-story").addEventListener("click", async () => {
+    if (!selectedStoryMedia) return;
+    const publishBtn = el("btn-publish-story");
+    publishBtn.disabled = true;
+    publishBtn.textContent = "Publishing Story...";
+    musicAudioPreview.pause();
+
+    try {
+      const mediaBase64 = await uploadMedia(selectedStoryMedia, "stories");
+
+      await db.collection("stories").add({
+        authorUid: currentUser.uid,
+        authorName: currentUser.displayName || "User",
+        mediaUrl: mediaBase64,
+        mediaType: selectedStoryMedia.type.startsWith("video") ? "video" : "image",
+        music: currentSelectedTrack ? {
+          title: currentSelectedTrack.name,
+          artist: currentSelectedTrack.artist,
+          url: currentSelectedTrack.audioUrl,
+          cover: currentSelectedTrack.cover
+        } : null,
+        createdAt: FV.serverTimestamp()
+      });
+
+      alert("Story with real music uploaded!");
+      storyModal.style.display = "none";
+      selectedStoryMedia = null;
+      currentSelectedTrack = null;
+      storyFileInput.value = "";
+      if (typeof loadStories === "function") loadStories();
+    } catch (err) {
+      alert("Upload failed: " + err.message);
+    } finally {
+      publishBtn.disabled = false;
+      publishBtn.textContent = "Share Story";
+    }
+  });
+}
+    // --- 1. Mega Emoji Picker & Auto-Insert Logic ---
+const emojiToggleBtn = el("btn-toggle-emoji");
+const emojiPickerBox = el("chat-emoji-picker");
+const chatInput = el("private-chat-input");
+
+if (emojiToggleBtn && emojiPickerBox && chatInput) {
+  emojiToggleBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isHidden = emojiPickerBox.style.display === "none";
+    emojiPickerBox.style.display = isHidden ? "flex" : "none";
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!emojiPickerBox.contains(e.target) && e.target !== emojiToggleBtn) {
+      emojiPickerBox.style.display = "none";
+    }
+  });
+
+  document.querySelectorAll(".emoji-item").forEach(item => {
+    item.addEventListener("click", () => {
+      chatInput.value += item.textContent;
+      chatInput.focus();
+    });
+  });
+
+  chatInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      const sendBtn = el("btn-send-private");
+      if (sendBtn) sendBtn.click();
+    }
+  });
+}
+
+// --- 2. Live Online & Realtime Presence System ---
+if (typeof currentUser !== "undefined" && currentUser) {
+  const myStatusRef = db.collection("users").doc(currentUser.uid);
+  myStatusRef.update({ isOnline: true, lastSeen: FV.serverTimestamp() }).catch(() => {});
+
+  window.addEventListener("beforeunload", () => {
+    myStatusRef.update({ isOnline: false, lastSeen: FV.serverTimestamp() });
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    myStatusRef.update({
+      isOnline: document.visibilityState === "visible",
+      lastSeen: FV.serverTimestamp()
+    }).catch(() => {});
+  });
+}
+
+// --- 3. Live Typing Indicator Sender ---
+let typingTimer = null;
+if (chatInput) {
+  chatInput.addEventListener("input", () => {
+    if (typeof activeChatUid === "undefined" || !activeChatUid || !currentUser) return;
+    
+    db.collection("users").doc(currentUser.uid).update({
+      typingTo: activeChatUid
+    }).catch(() => {});
+
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(() => {
+      db.collection("users").doc(currentUser.uid).update({
+        typingTo: null
+      }).catch(() => {});
+    }, 2000);
+  });
+}
+    
   </script>
   <div id="custom-highlight-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px); z-index:9999; align-items:center; justify-content:center; padding:16px;">
   <div style="background:#0f172a; border:1px solid #1e293b; border-radius:16px; padding:20px; width:100%; max-width:380px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
@@ -1293,6 +1690,28 @@ hlSaveBtn.addEventListener("click", async () => {
     </div>
   </div>
   </div>
+    <!-- Public User Profile Modal -->
+<div id="user-profile-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); backdrop-filter:blur(5px); z-index:9999; align-items:center; justify-content:center; padding:16px;">
+  <div style="background:#0f172a; border:1px solid #1e293b; border-radius:18px; padding:22px; width:100%; max-width:380px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.6); position:relative; text-align:center;">
+    <button id="modal-close-user-profile" style="position:absolute; top:12px; right:14px; background:none; border:none; color:#94a3b8; font-size:20px; cursor:pointer;">✕</button>
+
+    <div id="modal-user-avatar" style="width:84px; height:84px; border-radius:50%; background:#0284c7; margin:0 auto 12px; display:flex; align-items:center; justify-content:center; font-size:30px; font-weight:700; color:#fff; overflow:hidden; border:2px solid #38bdf8;">
+      U
+    </div>
+
+    <h3 id="modal-user-name" style="color:#f8fafc; font-size:18px; margin:0 0 4px 0; font-weight:600;">User Name</h3>
+    <p id="modal-user-handle" style="color:#38bdf8; font-size:13px; margin:0 0 10px 0;">@username</p>
+    <p id="modal-user-bio" style="color:#cbd5e1; font-size:13px; margin:0 0 16px 0; line-height:1.4; word-break:break-word;">No bio yet.</p>
+
+    <div style="display:flex; justify-content:space-around; background:#1e293b; border-radius:12px; padding:10px 0; margin-bottom:16px;">
+      <div><strong id="modal-user-posts" style="display:block; color:#f8fafc; font-size:15px;">0</strong><span style="font-size:11px; color:#94a3b8;">Posts</span></div>
+      <div><strong id="modal-user-followers" style="display:block; color:#f8fafc; font-size:15px;">0</strong><span style="font-size:11px; color:#94a3b8;">Followers</span></div>
+      <div><strong id="modal-user-following" style="display:block; color:#f8fafc; font-size:15px;">0</strong><span style="font-size:11px; color:#94a3b8;">Following</span></div>
+    </div>
+  </div>
+</div>
+  </div>
+  
   
 </body>
 </html>
