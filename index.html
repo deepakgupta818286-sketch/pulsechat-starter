@@ -318,7 +318,8 @@ auth.onAuthStateChanged(async (user) => {
 });
   
   // 1. Sign Up Function
-async function signup() {
+window.signup = async function() {
+  
   const name = document.getElementById("loginName").value.trim();
   const email = document.getElementById("loginEmail").value.trim();
   const password = document.getElementById("loginPassword").value.trim();
@@ -355,7 +356,8 @@ async function signup() {
 }
 
 // 2. Login Function
-async function login() {
+window.login = async function() {
+  
   const email = document.getElementById("loginEmail").value.trim();
   const password = document.getElementById("loginPassword").value.trim();
 
