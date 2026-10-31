@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>PulseChat - Super Social Super-App</title>
+
+  <!-- Firebase v9 Compat SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: #080c14; color: #f3f4f6; min-height: 100vh; display: flex; flex-direction: column; transition: background 0.3s, color 0.3s; }
+    body.light-theme { background: #f8fafc; color: #0f172a; }
+    body.light-theme header, body.light-theme .nav-bar, body.light-theme .post-card, body.light-theme .user-list-item, body.light-theme .settings-card, body.light-theme .profile-header, body.light-theme .chat-user-item { background: #ffffff; border-color: #cbd5e1; }
+    body.light-theme input, body.light-theme textarea, body.light-theme select { background: #f1f5f9; color: #0f172a; border-color: #cbd5e1; }
+    body.light-theme .post-text, body.light-theme .info-val { color: #0f172a; }
+    body.light-theme .chat-box { background: #f1f5f9; border-color: #cbd5e1; }
+    body.light-theme .chat-msg.other { background: #e2e8f0; color: #0f172a; }
+
+    .hidden { display: none !important; }
+    .app-shell { width: 100%; max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; background: #0f172a; position: relative; }
+    body.light-theme .app-shell { background: #f8fafc; }
+
+    header { background: #1e293b; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; position: sticky; top: 0; z-index: 50; }
+    .brand-wrap { display: flex; align-items: center; gap: 8px; }
+    .brand-logo-img { width: 28px; height: 28px; border-radius: 6px; object-fit: contain; }
+    .brand-logo { font-size: 19px; font-weight: 700; color: #38bdf8; }
+    .user-pill { font-size: 12px; color: #94a3b8; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .nav-bar { background: #1e293b; border-top: 1px solid #334155; display: flex; justify-content: space-around; padding: 6px 0; position: sticky; bottom: 0; z-index: 50; }
+    .nav-btn { background: none; border: none; color: #94a3b8; font-size: 10px; font-weight: 600; cursor: pointer; padding: 5px 6px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .nav-btn.active { color: #38bdf8; background: rgba(56,189,248,0.12); }
+
+    .card { padding: 16px; flex: 1; overflow-y: auto; }
+    .form-group { margin-bottom: 12px; }
+    label { display: block; font-size: 13px; color: #94a3b8; margin-bottom: 5px; }
+    input, textarea, select { width: 100%; padding: 11px; background: #030712; border: 1px solid #334155; border-radius: 8px; color: #fff; font-size: 14px; outline: none; }
+    input:focus, textarea:focus, select:focus { border-color: #38bdf8; }
+
+    .btn { width: 100%; padding: 11px; background: #0284c7; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-secondary { background: #334155; }
+    .btn-danger { background: #ef4444; }
+    .btn-success { background: #10b981; }
+    .btn-sm { width: auto; padding: 6px 12px; font-size: 12px; }
+    .btn-link { background: none; border: none; color: #38bdf8; cursor: pointer; font-size: 13px; margin-top: 10px; width: 100%; text-align: center; }
+
+    .status-msg { font-size: 13px; text-align: center; margin-top: 10px; min-height: 20px; word-break: break-word; }
+    .err-text { color: #f87171; }
+    .ok-text { color: #34d399; }
+
+    /* Stories */
+    .stories-tray { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; }
+    .story-item { display: flex; flex-direction: column; align-items: center; min-width: 58px; cursor: pointer; }
+    .story-circle { width: 54px; height: 54px; border-radius: 50%; border: 2px solid #38bdf8; object-fit: cover; background: #1e293b; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .story-add-btn { border-style: dashed; font-size: 20px; color: #38bdf8; }
+    .story-user { font-size: 10px; color: #94a3b8; margin-top: 4px; max-width: 56px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Posts & Comments */
+    .post-card { background: #1e293b; border-radius: 12px; padding: 12px; border: 1px solid #334155; margin-bottom: 12px; }
+    .post-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .post-user { font-weight: 600; font-size: 13px; color: #38bdf8; }
+    .post-text { font-size: 13px; line-height: 1.4; margin-bottom: 8px; color: #f1f5f9; word-break: break-word; white-space: pre-wrap; }
+    .post-media { width: 100%; border-radius: 8px; max-height: 260px; object-fit: contain; margin-bottom: 8px; background: #000; }
+    .post-actions { display: flex; gap: 14px; align-items: center; margin-top: 6px; }
+    .action-btn { cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #94a3b8; border: none; background: none; }
+    .action-btn.liked { color: #ef4444; font-weight: bold; }
+    .comments-box { margin-top: 8px; padding-top: 8px; border-top: 1px solid #334155; display: none; }
+    .comment-item { font-size: 12px; color: #cbd5e1; margin-bottom: 4px; }
+    .comment-item strong { color: #38bdf8; }
+
+    /* WhatsApp Direct Chat & Voice Notes */
+    .chat-user-item { display: flex; align-items: center; gap: 10px; padding: 10px; background: #1e293b; border-radius: 8px; margin-bottom: 8px; cursor: pointer; border: 1px solid #334155; }
+    .chat-user-avatar { width: 38px; height: 38px; border-radius: 50%; background: #0284c7; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #fff; flex-shrink: 0; }
+    .chat-box { height: 280px; overflow-y: auto; background: #030712; border: 1px solid #334155; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+    .chat-msg { max-width: 80%; padding: 7px 10px; border-radius: 8px; font-size: 13px; word-break: break-word; }
+    .chat-msg.mine { align-self: flex-end; background: #0284c7; color: #fff; }
+    .chat-msg.other { align-self: flex-start; background: #1e293b; color: #e2e8f0; border: 1px solid #334155; }
+    .voice-record-btn { background: #ef4444; color: #fff; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: bold; }
+    .voice-record-btn.recording { animation: pulse 1s infinite alternate; }
+    @keyframes pulse { from { opacity: 1; } to { opacity: 0.4; } }
+
+    /* Omegle & Video Filters */
+    .filter-normal { filter: none; }
+    .filter-vintage { filter: sepia(0.6) contrast(1.2); }
+    .filter-bw { filter: grayscale(1) contrast(1.3); }
+    .filter-cyber { filter: hue-rotate(90deg) saturate(1.8); }
+    .filter-warm { filter: sepia(0.3) saturate(1.4) hue-rotate(-15deg); }
+    .omegle-grid { display: grid; grid-template-rows: 1fr 1fr; gap: 8px; background: #000; padding: 8px; border-radius: 10px; margin-bottom: 8px; height: 340px; }
+    .omegle-video { width: 100%; height: 100%; border-radius: 8px; background: #111827; object-fit: cover; }
+
+    /* Settings & Profile */
+    .settings-card { background: #1e293b; border-radius: 12px; padding: 14px; border: 1px solid #334155; margin-bottom: 14px; }
+    .settings-title { font-size: 14px; font-weight: 700; color: #38bdf8; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+    .info-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; gap: 8px; }
+    .info-label { color: #94a3b8; }
+    .info-val { font-weight: 600; color: #f1f5f9; text-align: right; overflow-wrap: anywhere; }
+    .privacy-badge { background: #10b98122; color: #10b981; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px; white-space: nowrap; }
+
+    .profile-header { background: #1e293b; border-radius: 12px; padding: 16px; border: 1px solid #334155; margin-bottom: 14px; text-align: center; }
+    .profile-stats-row { display: flex; justify-content: space-around; margin: 12px 0; border-top: 1px solid #334155; border-bottom: 1px solid #334155; padding: 8px 0; }
+    .stat-node strong { font-size: 16px; color: #38bdf8; display: block; }
+    .stat-node span { font-size: 11px; color: #94a3b8; }
+
+    .highlights-shelf { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 14px; }
+    .highlight-item { display: flex; flex-direction: column; align-items: center; min-width: 58px; cursor: pointer; }
+    .highlight-circle { width: 52px; height: 52px; border-radius: 50%; border: 2px solid #38bdf8; object-fit: cover; background: #0f172a; display: flex; align-items: center; justify-content: center; font-size: 20px; overflow: hidden; }
+    .highlight-title { font-size: 10px; color: #cbd5e1; margin-top: 4px; max-width: 56px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .user-list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #1e293b; border-radius: 8px; margin-bottom: 8px; border: 1px solid #334155; gap: 8px; }
+    .upload-progress-box { background: #334155; border-radius: 10px; overflow: hidden; margin-top: 8px; display: none; }
+    .upload-progress-bar { height: 8px; width: 0%; background: #38bdf8; transition: width 0.2s; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header>
+      <div class="brand-wrap">
+        <img src="pulsechat-logo.png" alt="Logo" class="brand-logo-img" onerror="this.style.display='none'">
+        <div class="brand-logo">PulseChat</div>
+      </div>
+      <div class="user-pill" id="app-user-pill">Offline</div>
+    </header>
+
+    <!-- 1. SIGNUP SCREEN WITH 6 FIELDS -->
+    <div id="view-signup" class="card">
+      <h2 style="color: #38bdf8; margin-bottom: 4px;">Naya Account Banayein</h2>
+      <p style="font-size: 13px; color: #94a3b8; margin-bottom: 16px;">Gmail aur Mobile Number poori tarah Private rahenge 🔒</p>
+
+      <div class="form-group"><label>Poora Naam</label><input type="text" id="signup-name" placeholder="Deepak Gupta" autocomplete="name"></div>
+      <div class="form-group"><label>Username</label><input type="text" id="signup-username" placeholder="deepak_01" autocomplete="username"></div>
+      <div class="form-group"><label>Email Address</label><input type="email" id="signup-email" placeholder="apna@gmail.com" autocomplete="email"></div>
+      <div class="form-group">
+        <label>Mobile Number (+91 India)</label>
+        <div style="display: flex; gap: 6px;">
+          <span style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 11px 12px; color: #38bdf8; font-weight: 600;">+91</span>
+          <input type="tel" id="signup-phone" placeholder="9876543210" maxlength="10" inputmode="numeric" autocomplete="tel-national">
+        </div>
+      </div>
+      <div class="form-group"><label>Password</label><input type="password" id="signup-password" placeholder="Min 6 characters" autocomplete="new-password"></div>
+      <div class="form-group"><label>Confirm Password</label><input type="password" id="signup-confirm-password" placeholder="Re-enter password" autocomplete="new-password"></div>
+
+      <button class="btn btn-success" id="btn-signup-submit">Create Account</button>
+      <button class="btn-link" id="btn-goto-login">Pehle se account hai? Sign In</button>
+      <div class="status-msg" id="signup-status-txt"></div>
+    </div>
+
+    <!-- 2. LOGIN SCREEN -->
+    <div id="view-login" class="card hidden">
+      <h2 style="color: #38bdf8; margin-bottom: 4px;">Sign In</h2>
+      <p style="font-size: 13px; color: #94a3b8; margin-bottom: 18px;">Email aur Password se login karein</p>
+      <div class="form-group"><label>Email Address</label><input type="email" id="login-email-input" placeholder="apna-email@gmail.com" autocomplete="email"></div>
+      <div class="form-group"><label>Password</label><input type="password" id="login-password-input" placeholder="Apna password" autocomplete="current-password"></div>
+      <button class="btn" id="btn-login-password">Sign In</button>
+      <button class="btn-link" id="btn-goto-signup">New user? Register Account</button>
+      <div class="status-msg" id="login-status-txt"></div>
+    </div>
+
+    <!-- 3. OTP SCREEN -->
+    <div id="view-otp" class="card hidden">
+      <h2 style="color: #38bdf8; margin-bottom: 4px;">Verify OTP</h2>
+      <p style="font-size: 13px; color: #94a3b8; margin-bottom: 18px;" id="otp-target-text">Gmail par code bheja gaya hai</p>
+      <div class="form-group"><label>6-Digit Verification Code</label><input type="text" id="input-verify-otp" placeholder="123456" maxlength="6" inputmode="numeric" autocomplete="one-time-code"></div>
+      <button class="btn" id="btn-verify-otp-action">Verify Email & Create Account</button>
+      <button class="btn-link" id="btn-resend-otp" style="margin-top:10px;">Resend OTP</button>
+      <div class="status-msg" id="otp-status-txt"></div>
+    </div>
+
+    <!-- 4. FEED VIEW -->
+    <div id="view-feed" class="card hidden">
+      <div class="stories-tray" id="tray-stories">
+        <div class="story-item" id="add-story-btn">
+          <div class="story-circle story-add-btn">+</div>
+          <span class="story-user">Add Story</span>
+        </div>
+      </div>
+      <input type="file" id="story-file-input" accept="image/*,video/*" class="hidden">
+
+      <div class="post-card">
+        <textarea id="post-input-text" rows="2" placeholder="Share something new..."></textarea>
+        <label style="margin-top: 6px;">Gallery Media:</label>
+        <input type="file" id="post-file-input" accept="image/*,video/*" style="margin-bottom: 6px;">
+        <button class="btn btn-success" id="btn-post-submit">Post Feed</button>
+        <div class="upload-progress-box" id="post-prog-box"><div class="upload-progress-bar" id="post-prog-bar"></div></div>
+      </div>
+      <div id="posts-container"></div>
+    </div>
+
+    <!-- 5. WHATSAPP DIRECT CHAT + VOICE NOTES -->
+    <div id="view-chat" class="card hidden">
+      <div id="chat-users-list-pane">
+        <h3 style="margin-bottom: 10px; color: #38bdf8;">Direct Chats</h3>
+        <div id="chat-users-directory"></div>
+      </div>
+      <div id="chat-conversation-pane" class="hidden">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <button class="btn btn-secondary" id="btn-back-to-contacts" style="width: auto; padding: 4px 10px; margin:0;">← Back</button>
+          <strong id="active-peer-name" style="color: #38bdf8; font-size:14px;">Chat</strong>
+        </div>
+        <div class="chat-box" id="private-chat-stream"></div>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <input type="text" id="private-chat-input" placeholder="Type message...">
+          <button class="btn" id="btn-send-private" style="width:60px; padding:10px 4px;">Send</button>
+          <button class="voice-record-btn" id="btn-record-voice">🎙️</button>
+        </div>
+        <div class="status-msg" id="voice-status-txt"></div>
+      </div>
+    </div>
+
+    <!-- 6. OMEGLE VIDEO CALL WITH REALTIME CAMERA FILTERS -->
+    <div id="view-omegle" class="card hidden">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <h3 style="color:#38bdf8;">Omegle Call</h3>
+        <select id="camera-filter-select" style="width:130px; padding:6px; font-size:12px;">
+          <option value="filter-normal">Normal</option>
+          <option value="filter-vintage">Vintage</option>
+          <option value="filter-bw">Black & White</option>
+          <option value="filter-cyber">Cyberpunk</option>
+          <option value="filter-warm">Warm</option>
+        </select>
+      </div>
+      <div class="omegle-grid">
+        <video id="omegle-remote-stream" class="omegle-video filter-normal" autoplay playsinline></video>
+        <video id="omegle-local-stream" class="omegle-video filter-normal" autoplay muted playsinline></video>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+        <button class="btn btn-success" id="btn-omegle-find">Find Stranger</button>
+        <button class="btn btn-danger" id="btn-omegle-next">Next / Stop</button>
+      </div>
+      <div class="status-msg" id="omegle-status-txt">Ready to match</div>
+    </div>
+
+    <!-- 7. PEOPLE DIRECTORY (NO GMAIL/PHONE VISIBLE) -->
+    <div id="view-users" class="card hidden">
+      <h3 style="color:#38bdf8; margin-bottom:12px;">Discover People</h3>
+      <div id="users-directory-list"></div>
+    </div>
+
+    <!-- 8. PROFILE VIEW -->
+    <div id="view-profile" class="card hidden">
+      <div class="profile-header">
+        <div style="width:64px; height:64px; border-radius:50%; background:#0284c7; color:#fff; display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:bold; margin:0 auto 10px;" id="prof-avatar">U</div>
+        <h3 id="prof-name" style="color:#38bdf8;">User Name</h3>
+        <p style="font-size:12px; color:#94a3b8;" id="prof-handle">@username</p>
+        <p style="font-size:12px; color:#cbd5e1; margin-top:6px;" id="prof-bio">Bio</p>
+        <div class="profile-stats-row">
+          <div class="stat-node"><strong id="stat-posts">0</strong><span>Posts</span></div>
+          <div class="stat-node"><strong id="stat-followers">0</strong><span>Followers</span></div>
+          <div class="stat-node"><strong id="stat-following">0</strong><span>Following</span></div>
+        </div>
+        <button class="btn btn-sm btn-secondary" onclick="navigate('view-settings')" style="width:100%;">⚙️ Open Settings</button>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <span style="font-size:13px; font-weight:600; color:#38bdf8;">Story Highlights</span>
+        <button class="btn btn-sm btn-secondary" id="btn-create-highlight">+ Add</button>
+      </div>
+      <div class="highlights-shelf" id="profile-highlights-shelf"></div>
+    </div>
+
+    <!-- 9. SETTINGS VIEW -->
+    <div id="view-settings" class="card hidden">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="color:#38bdf8;">⚙️ PulseChat Settings</h3>
+        <button class="btn btn-sm btn-secondary" onclick="navigate('view-profile')">Done</button>
+      </div>
+      <div class="settings-card">
+        <div class="settings-title">👤 My Account</div>
+        <div class="info-row"><span class="info-label">Poora Naam:</span><span class="info-val" id="set-disp-name">-</span></div>
+        <div class="info-row"><span class="info-label">Username:</span><span class="info-val" id="set-disp-username">-</span></div>
+        <div class="info-row"><span class="info-label">Gmail (Niji):</span><span class="info-val" id="set-disp-email">-</span><span class="privacy-badge">Private</span></div>
+        <div class="info-row"><span class="info-label">Mobile (Niji):</span><span class="info-val" id="set-disp-phone">-</span><span class="privacy-badge">Private</span></div>
+        <div class="info-row"><span class="info-label">Joined On:</span><span class="info-val" id="set-disp-joined">-</span></div>
+      </div>
+      <div class="settings-card">
+        <div class="settings-title">✏️ Edit Profile</div>
+        <div class="form-group"><label>Naam Badlein</label><input type="text" id="edit-name"></div>
+        <div class="form-group"><label>Username Badlein</label><input type="text" id="edit-username"></div>
+        <div class="form-group"><label>Bio Badlein</label><textarea id="edit-bio" rows="2"></textarea></div>
+        <button class="btn btn-success" id="btn-save-profile">Save Profile Changes</button>
+      </div>
+      <div class="settings-card">
+        <div class="settings-title">📱 Preferences</div>
+        <div class="info-row">
+          <span class="info-label">Theme Mode:</span>
+          <button class="btn btn-sm btn-secondary" id="btn-theme-toggle">🌙 Dark Mode</button>
+        </div>
+      </div>
+      <button class="btn btn-danger" id="btn-account-logout" style="margin-top:10px;">Logout Account</button>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="nav-bar hidden" id="app-nav-bar">
+      <button class="nav-btn active" data-view="view-feed"><span>📰</span>Feed</button>
+      <button class="nav-btn" data-view="view-chat"><span>💬</span>Chat</button>
+      <button class="nav-btn" data-view="view-omegle"><span>📹</span>Omegle</button>
+      <button class="nav-btn" data-view="view-users"><span>👥</span>People</button>
+      <button class="nav-btn" data-view="view-profile"><span>👤</span>Profile</button>
+    </nav>
+  </div>
+
+  <script>
+    "use strict";
+
+    const API_WORKER = "https://floral-water-0c76.deepakgupta818286.workers.dev";
+
+    // Verified Firebase Project Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAwgk2ouRggHR-sM9NeN52zMT6LFMZ44iI",
+      authDomain: "pulsechat-bc35f.firebaseapp.com",
+      databaseURL: "https://pulsechat-bc35f-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "pulsechat-bc35f",
+      storageBucket: "pulsechat-bc35f.firebasestorage.app",
+      messagingSenderId: "680301724013",
+      appId: "1:680301724013:web:dc4568e3a2f56e1c171a64",
+      measurementId: "G-561WBR4LWD"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+    const FV = firebase.firestore.FieldValue;
+
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err => console.error("Persistence error:", err));
+
+    let currentUser = null;
+    let authMode = "signup";
+    let pendingEmail = "";
+    let tempSignupData = null;
+    let authFlowInProgress = false;
+
+    let unsubFeed = null;
+    let unsubStories = null;
+    let unsubUsers = null;
+    let unsubChatUsers = null;
+    let unsubPrivateChat = null;
+    let unsubHighlights = null;
+    let myBlockedUsers = [];
+
+    function el(id) { return document.getElementById(id); }
+
+    function setStatus(id, msg, isOk = false) {
+      const box = el(id);
+      if (!box) return;
+      box.textContent = msg;
+      box.className = "status-msg " + (isOk ? "ok-text" : "err-text");
+    }
+
+    function escapeHTML(value) {
+      return String(value ?? "").replace(/[&<>"']/g, ch => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[ch]);
+    }
+
+    function stopListeners() {
+      if (unsubFeed) { unsubFeed(); unsubFeed = null; }
+      if (unsubStories) { unsubStories(); unsubStories = null; }
+      if (unsubUsers) { unsubUsers(); unsubUsers = null; }
+      if (unsubChatUsers) { unsubChatUsers(); unsubChatUsers = null; }
+      if (unsubPrivateChat) { unsubPrivateChat(); unsubPrivateChat = null; }
+      if (unsubHighlights) { unsubHighlights(); unsubHighlights = null; }
+    }
+
+    function navigate(viewId) {
+      const allowed = ["view-feed", "view-chat", "view-omegle", "view-users", "view-profile", "view-settings"];
+      if (!allowed.includes(viewId)) return;
+      allowed.forEach(id => el(id).classList.add("hidden"));
+      el(viewId).classList.remove("hidden");
+      document.querySelectorAll(".nav-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.view === viewId);
+      });
+
+      stopListeners();
+      if (viewId === "view-feed") { listenFeed(); listenStories(); }
+      if (viewId === "view-chat") loadDirectChatContacts();
+      if (viewId === "view-users") loadUsersDirectory();
+      if (viewId === "view-profile") loadProfileData();
+      if (viewId === "view-settings") loadSettingsData();
+      if (viewId !== "view-omegle") hangupOmegleCall();
+    }
+
+    document.querySelectorAll(".nav-btn").forEach(btn => {
+      btn.addEventListener("click", () => navigate(btn.dataset.view));
+    });
+
+    el("btn-goto-login").addEventListener("click", () => {
+      el("view-signup").classList.add("hidden");
+      el("view-login").classList.remove("hidden");
+    });
+
+    el("btn-goto-signup").addEventListener("click", () => {
+      el("view-login").classList.add("hidden");
+      el("view-signup").classList.remove("hidden");
+    });
+
+    // Signup: verify email OTP first, then create/link Firebase Email+Password.
+    el("btn-signup-submit").addEventListener("click", () => {
+      const name = el("signup-name").value.trim();
+      const username = el("signup-username").value.trim().toLowerCase();
+      const email = el("signup-email").value.trim().toLowerCase();
+      const phone = el("signup-phone").value.trim();
+      const password = el("signup-password").value;
+      const confirmPassword = el("signup-confirm-password").value;
+
+      if (!name || !username || !email || !phone || !password || !confirmPassword) {
+        return setStatus("signup-status-txt", "Sabhi 6 fields bharna anivarya hai.");
+      }
+      if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+        return setStatus("signup-status-txt", "Username 3-20 characters ka ho; sirf a-z, 0-9 aur underscore use karein.");
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setStatus("signup-status-txt", "Sahi email dalein.");
+      if (!/^[6-9]\d{9}$/.test(phone)) return setStatus("signup-status-txt", "10-digit Indian number dalein.");
+      if (password.length < 6) return setStatus("signup-status-txt", "Password min 6 akshar ka ho.");
+      if (password !== confirmPassword) return setStatus("signup-status-txt", "Password match nahi kar raha.");
+
+      tempSignupData = { fullName: name, username, email, phone: "+91" + phone, password };
+      authMode = "signup";
+      sendOtp(email, "signup-status-txt", "btn-signup-submit");
+    });
+
+    // Login: Email + Password only. OTP is required only during signup.
+    el("btn-login-password").addEventListener("click", async () => {
+      const email = el("login-email-input").value.trim().toLowerCase();
+      const password = el("login-password-input").value;
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return setStatus("login-status-txt", "Sahi email dalein.");
+      }
+      if (!password) return setStatus("login-status-txt", "Password enter karein.");
+
+      const btn = el("btn-login-password");
+      btn.disabled = true;
+      setStatus("login-status-txt", "Login ho raha hai...", true);
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+        setStatus("login-status-txt", "Login safal!", true);
+      } catch (err) {
+        const messages = {
+          "auth/user-not-found": "Is email ka account nahi mila. Pehle Signup karein.",
+          "auth/wrong-password": "Password galat hai.",
+          "auth/invalid-credential": "Email ya Password galat hai.",
+          "auth/too-many-requests": "Bahut baar koshish hui. Thodi der baad dobara karein."
+        };
+        throwIfAuthLoginError(err, messages, "login-status-txt");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    function throwIfAuthLoginError(err, messages, statusId) {
+      setStatus(statusId, messages[err.code] || err.message || "Login nahi ho paya.");
+    }
+
+    el("btn-resend-otp").addEventListener("click", () => {
+      if (!pendingEmail || authMode !== "signup") return;
+      sendOtp(pendingEmail, "otp-status-txt", "btn-resend-otp");
+    });
+
+    async function sendOtp(email, statusId, btnId) {
+      const btn = el(btnId);
+      btn.disabled = true;
+      setStatus(statusId, "OTP bheja ja raha hai...", true);
+      try {
+        const res = await fetch(`${API_WORKER}/api/send-otp`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email })
+        });
+        const out = await res.json().catch(() => ({}));
+        if (!res.ok || out.error) throw new Error(out.error || "OTP bhejne me dikkat hui.");
+
+        pendingEmail = email;
+        el("view-signup").classList.add("hidden");
+        el("view-login").classList.add("hidden");
+        el("view-otp").classList.remove("hidden");
+        el("otp-target-text").textContent = `${email} par Signup verification code bheja gaya hai`;
+        el("input-verify-otp").value = "";
+        setStatus("otp-status-txt", "Code email par bhej diya gaya!", true);
+      } catch (err) {
+        setStatus(statusId, err.message || "OTP bhejne mein dikkat hui.");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    el("btn-verify-otp-action").addEventListener("click", async () => {
+      const otp = el("input-verify-otp").value.trim();
+      if (authMode !== "signup" || !tempSignupData) {
+        return setStatus("otp-status-txt", "Signup session nahi mili. Dobara Signup karein.");
+      }
+      if (!/^\d{6}$/.test(otp)) return setStatus("otp-status-txt", "6-digit OTP enter karein.");
+
+      const btn = el("btn-verify-otp-action");
+      btn.disabled = true;
+      setStatus("otp-status-txt", "OTP verify ho raha hai...", true);
+      authFlowInProgress = true;
+
+      try {
+        const res = await fetch(`${API_WORKER}/api/verify-otp`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: pendingEmail, otp })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.customToken) throw new Error(data.error || "Galat ya expired OTP.");
+
+        // The Worker custom token authenticates the OTP-verified UID; it does NOT
+        // automatically attach an email/password provider to that Firebase user.
+        const cred = await auth.signInWithCustomToken(data.customToken);
+        let user = cred.user;
+        const signupEmail = tempSignupData.email.trim().toLowerCase();
+        const passwordProvider = (user.providerData || []).find(p => p.providerId === "password");
+
+        if (passwordProvider) {
+          // A previous attempt may already have linked the credential before a later
+          // profile write failed. Do not try linkWithCredential a second time.
+          if ((user.email || passwordProvider.email || "").toLowerCase() !== signupEmail) {
+            throw new Error("Is Firebase UID par doosra email linked hai. Support se jaanch karwayein.");
+          }
+        } else {
+          const emailCredential = firebase.auth.EmailAuthProvider.credential(
+            signupEmail,
+            tempSignupData.password
+          );
+          const linked = await user.linkWithCredential(emailCredential);
+          user = linked.user;
+        }
+
+        const publicProfile = {
+          fullName: tempSignupData.fullName,
+          username: tempSignupData.username,
+          bio: "Hey there! I am using PulseChat.",
+          followersCount: 0,
+          followingCount: 0,
+          blockedUsers: [],
+          createdAt: FV.serverTimestamp()
+        };
+
+        await db.collection("users").doc(user.uid).set(publicProfile, { merge: true });
+        // Email and phone are stored only in the private document, never in public users.
+        await db.collection("privateUsers").doc(user.uid).set({
+          email: tempSignupData.email,
+          phone: tempSignupData.phone,
+          createdAt: FV.serverTimestamp()
+        }, { merge: true });
+
+        const completedEmail = signupEmail;
+        tempSignupData = null;
+        pendingEmail = "";
+        setStatus("otp-status-txt", "Signup safal! Ab aap Email aur Password se Login kar sakte hain.", true);
+        await auth.signOut();
+        el("view-otp").classList.add("hidden");
+        el("view-login").classList.remove("hidden");
+        el("login-email-input").value = completedEmail;
+        el("login-password-input").value = "";
+      } catch (err) {
+        let msg = err.message || "Signup verify nahi ho paya.";
+        if (err.code === "auth/provider-already-linked" || err.code === "auth/email-already-in-use") {
+          msg = "Is email ka account pehle se bana hua hai. Login karein.";
+        } else if (err.code === "auth/credential-already-in-use") {
+          msg = "Yeh email kisi doosre Firebase account se judi hui hai.";
+        }
+        console.error("Signup verification error:", err);
+        setStatus("otp-status-txt", msg);
+        if (auth.currentUser) {
+          await auth.signOut().catch(signOutError => console.error("Signup cleanup error:", signOutError));
+        }
+      } finally {
+        authFlowInProgress = false;
+        btn.disabled = false;
+      }
+    });
+
+    auth.onAuthStateChanged(async user => {
+      if (authFlowInProgress) return;
+      currentUser = user;
+      if (user) {
+        try {
+          const uDoc = await db.collection("users").doc(user.uid).get();
+          if (uDoc.exists) myBlockedUsers = uDoc.data().blockedUsers || [];
+          const publicName = uDoc.exists ? (uDoc.data().username || uDoc.data().fullName) : "PulseChat";
+          el("app-user-pill").textContent = publicName || "Account";
+          el("app-user-pill").style.color = "#38bdf8";
+
+          el("view-signup").classList.add("hidden");
+          el("view-login").classList.add("hidden");
+          el("view-otp").classList.add("hidden");
+          el("app-nav-bar").classList.remove("hidden");
+          navigate("view-feed");
+        } catch (err) {
+          console.error("Account load error:", err);
+          setStatus("otp-status-txt", "Account data load nahi hua: " + err.message);
+        }
+      } else {
+        stopListeners();
+        hangupOmegleCall();
+        myBlockedUsers = [];
+        el("app-nav-bar").classList.add("hidden");
+        ["view-feed", "view-chat", "view-omegle", "view-users", "view-profile", "view-settings", "view-login", "view-otp"].forEach(id => el(id).classList.add("hidden"));
+        el("view-signup").classList.remove("hidden");
+        el("app-user-pill").textContent = "Offline";
+        el("app-user-pill").style.color = "#94a3b8";
+      }
+    });
+
+    el("btn-account-logout").addEventListener("click", () => auth.signOut().catch(err => alert(err.message)));
+
+    // Media Storage Upload Engine
+    async function uploadMedia(file, folder, onProg) {
+      if (!currentUser) throw new Error("Pehle login karein.");
+      if (!file) throw new Error("File select karein.");
+      const ext = file.name ? file.name.split(".").pop().toLowerCase().replace(/[^a-z0-9]/g, "") : "dat";
+      const fileName = Date.now() + "_" + Math.random().toString(36).slice(2, 9) + "." + ext;
+      const ref = storage.ref().child(`pulseChat/${folder}/${currentUser.uid}/${fileName}`);
+      const uploadTask = ref.put(file, { contentType: file.type || "application/octet-stream" });
+
+      return new Promise((resolve, reject) => {
+        uploadTask.on("state_changed",
+          snap => { if (onProg) onProg(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)); },
+          err => reject(err),
+          async () => resolve(await uploadTask.snapshot.ref.getDownloadURL())
+        );
+      });
+    }
+
+    // Feed Post Creation & Listening
+    el("btn-post-submit").addEventListener("click", async () => {
+      if (!currentUser) return alert("Pehle login karein.");
+      const text = el("post-input-text").value.trim();
+      const file = el("post-file-input").files[0];
+      if (!text && !file) return alert("Kuch text ya media select karein.");
+
+      const btn = el("btn-post-submit");
+      btn.disabled = true;
+      el("post-prog-box").style.display = "block";
+
+      try {
+        let mediaUrl = null;
+        if (file) {
+          mediaUrl = await uploadMedia(file, "posts", p => { el("post-prog-bar").style.width = p + "%"; });
+        }
+        const profileSnap = await db.collection("users").doc(currentUser.uid).get();
+        const profile = profileSnap.exists ? profileSnap.data() : {};
+        await db.collection("pulse_posts").add({
+          text,
+          mediaUrl,
+          authorUid: currentUser.uid,
+          authorName: profile.fullName || "User",
+          authorUsername: profile.username || "user",
+          likes: [],
+          createdAt: FV.serverTimestamp()
+        });
+        el("post-input-text").value = "";
+        el("post-file-input").value = "";
+      } catch (e) {
+        alert(e.message || "Post upload nahi hua.");
+      } finally {
+        btn.disabled = false;
+        el("post-prog-box").style.display = "none";
+        el("post-prog-bar").style.width = "0%";
+      }
+    });
+
+    function listenFeed() {
+      if (!currentUser) return;
+      if (unsubFeed) unsubFeed();
+      unsubFeed = db.collection("pulse_posts").orderBy("createdAt", "desc").limit(30)
+        .onSnapshot(snap => {
+          const box = el("posts-container");
+          box.innerHTML = "";
+          snap.forEach(doc => {
+            const p = doc.data();
+            if (myBlockedUsers.includes(p.authorUid)) return;
+
+            const likes = Array.isArray(p.likes) ? p.likes : [];
+            const isLiked = likes.includes(currentUser.uid);
+            const card = document.createElement("div");
+            card.className = "post-card";
+            const author = p.authorUsername ? "@" + p.authorUsername : (p.authorName || "User");
+            const time = p.createdAt && p.createdAt.toDate
+              ? new Date(p.createdAt.toDate()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+              : "";
+
+            card.innerHTML = `
+              <div class="post-header">
+                <span class="post-user">${escapeHTML(author)}</span>
+                <span style="font-size:10px; color:#64748b;">${escapeHTML(time)}</span>
+              </div>
+              <div class="post-text">${escapeHTML(p.text || "")}</div>
+              ${p.mediaUrl ? `<img src="${escapeHTML(p.mediaUrl)}" class="post-media" alt="Post media" loading="lazy">` : ""}
+              <div class="post-actions">
+                <button class="action-btn ${isLiked ? "liked" : ""}" data-post-id="${escapeHTML(doc.id)}">
+                  ${isLiked ? "❤️" : "🤍"} ${likes.length} Likes
+                </button>
+                <button class="action-btn" onclick="toggleCommentsView('${doc.id}')">💬 Comments</button>
+                <button class="action-btn" onclick="sharePost('${doc.id}')">🔗 Share</button>
+                <button class="action-btn" onclick="reportPost('${doc.id}')">⚠️ Report</button>
+              </div>
+              <div class="comments-box" id="comments-box-${doc.id}">
+                <div id="comments-list-${doc.id}"></div>
+                <div style="display:flex; gap:4px; margin-top:6px;">
+                  <input type="text" id="comm-in-${doc.id}" placeholder="Add a comment..." style="padding:6px; font-size:12px;">
+                  <button class="btn btn-success" style="width:60px; padding:6px; font-size:12px;" onclick="addComment('${doc.id}')">Send</button>
+                </div>
+              </div>
+            `;
+            const likeButton = card.querySelector(".action-btn");
+            likeButton.addEventListener("click", () => toggleLike(doc.id));
+            box.appendChild(card);
+          });
+        }, err => console.error("Feed error:", err));
+    }
+
+    async function toggleLike(postId) {
+      if (!currentUser) return;
+      const ref = db.collection("pulse_posts").doc(postId);
+      await db.runTransaction(async t => {
+        const snap = await t.get(ref);
+        if (!snap.exists) return;
+        const likes = Array.isArray(snap.data().likes) ? snap.data().likes : [];
+        if (likes.includes(currentUser.uid)) t.update(ref, { likes: FV.arrayRemove(currentUser.uid) });
+        else t.update(ref, { likes: FV.arrayUnion(currentUser.uid) });
+      });
+    }
+
+    window.sharePost = (postId) => {
+      const url = window.location.origin + window.location.pathname + "#post-" + postId;
+      navigator.clipboard.writeText(url).then(() => alert("Post link copied to clipboard!"));
+    };
+
+    window.reportPost = async (postId) => {
+      if (!currentUser || !auth.currentUser) {
+        alert("Report karne ke liye pehle login karein.");
+        return;
+      }
+      if (typeof postId !== "string" || !postId.trim()) {
+        alert("Post ID nahi mili. Page refresh karke dobara try karein.");
+        return;
+      }
+      const reasonInput = prompt("Report ka karan likhein (Spam, Inappropriate):");
+      if (reasonInput === null) return;
+      const reason = reasonInput.trim();
+      if (!reason) {
+        alert("Report ka karan likhna zaroori hai.");
+        return;
+      }
+      if (reason.length > 1000) {
+        alert("Report ka karan 1000 characters se chhota rakhein.");
+        return;
+      }
+      try {
+        await db.collection("reports").add({
+          postId: postId.trim(),
+          reportedBy: auth.currentUser.uid,
+          reason,
+          status: "pending",
+          createdAt: FV.serverTimestamp()
+        });
+        alert("Report successfully submit ho gayi.");
+      } catch (error) {
+        console.error("Report submit error:", error);
+        alert(error.code === "permission-denied"
+          ? "Report submit nahi hui: Firestore Rules mein reports collection ki permission nahi hai."
+          : "Report submit nahi ho payi. Internet aur Firebase Rules check karke dobara try karein.");
+      }
+    };
+
+    window.toggleCommentsView = (postId) => {
+      const cBox = el("comments-box-" + postId);
+      cBox.style.display = cBox.style.display === "block" ? "none" : "block";
+      if (cBox.style.display === "block") {
+        db.collection("pulse_posts").doc(postId).collection("comments").orderBy("createdAt", "asc").limit(20)
+          .onSnapshot(s => {
+            const list = el("comments-list-" + postId);
+            list.innerHTML = "";
+            s.forEach(cd => {
+              const c = cd.data();
+              const itm = document.createElement("div");
+              itm.className = "comment-item";
+              itm.innerHTML = `<strong>${escapeHTML(c.user)}</strong>: ${escapeHTML(c.text)}`;
+              list.appendChild(itm);
+            });
+          });
+      }
+    };
+
+    window.addComment = async (postId) => {
+      const inEl = el("comm-in-" + postId);
+      const val = inEl.value.trim();
+      if (!val || !currentUser) return;
+      inEl.value = "";
+      const profileSnap = await db.collection("users").doc(currentUser.uid).get();
+      const profile = profileSnap.exists ? profileSnap.data() : {};
+      await db.collection("pulse_posts").doc(postId).collection("comments").add({
+        text: val,
+        user: profile.username || profile.fullName || "User",
+        uid: currentUser.uid,
+        createdAt: FV.serverTimestamp()
+      });
+    };
+
+    // 24h Stories
+    el("add-story-btn").addEventListener("click", () => el("story-file-input").click());
+    el("story-file-input").addEventListener("change", async e => {
+      const file = e.target.files[0];
+      if (!file || !currentUser) return;
+      try {
+        const url = await uploadMedia(file, "stories");
+        await db.collection("pulse_stories").add({
+          mediaUrl: url,
+          userUid: currentUser.uid,
+          createdAt: FV.serverTimestamp()
+        });
+        alert("Story uploaded!");
+      } catch (err) { alert(err.message); }
+      finally { e.target.value = ""; }
+    });
+
+    function listenStories() {
+      if (unsubStories) unsubStories();
+      const cutoff = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 24 * 60 * 60 * 1000));
+      unsubStories = db.collection("pulse_stories").where("createdAt", ">=", cutoff).orderBy("createdAt", "desc")
+        .onSnapshot(snap => {
+          const shelf = el("tray-stories");
+          shelf.querySelectorAll(".story-node").forEach(n => n.remove());
+          snap.forEach(doc => {
+            const s = doc.data();
+            const itm = document.createElement("div");
+            itm.className = "story-item story-node";
+            itm.innerHTML = `
+              <div class="story-circle"><img src="${s.mediaUrl}" style="width:100%;height:100%;object-fit:cover;"></div>
+              <span class="story-user">Story</span>
+            `;
+            itm.onclick = () => window.open(s.mediaUrl, '_blank');
+            shelf.appendChild(itm);
+          });
+        });
+    }
+
+    // WhatsApp 1-on-1 Chat + Voice Notes
+    let activeChatRoomId = null;
+    let selectedPeerUid = null;
+    let mediaRecorder = null;
+    let audioChunks = [];
+
+    function loadDirectChatContacts() {
+      if (unsubChatUsers) unsubChatUsers();
+      unsubChatUsers = db.collection("users").limit(30).onSnapshot(snap => {
+        const dir = el("chat-users-directory");
+        dir.innerHTML = "";
+        snap.forEach(d => {
+          if (d.id === currentUser.uid || myBlockedUsers.includes(d.id)) return;
+          const u = d.data();
+          const item = document.createElement("div");
+          item.className = "chat-user-item";
+          item.innerHTML = `
+            <div class="chat-user-avatar">${(u.fullName ? u.fullName[0] : "U").toUpperCase()}</div>
+            <div>
+              <div style="font-weight:600; font-size:14px; color:#38bdf8;">${escapeHTML(u.fullName || 'User')}</div>
+              <div style="font-size:11px; color:#94a3b8;">@${escapeHTML(u.username || 'user')}</div>
+            </div>
+          `;
+          item.onclick = () => openDirectConversation(d.id, u.fullName || u.username || "User");
+          dir.appendChild(item);
+        });
+      });
+    }
+
+    function openDirectConversation(peerUid, peerName) {
+      selectedPeerUid = peerUid;
+      el("chat-users-list-pane").classList.add("hidden");
+      el("chat-conversation-pane").classList.remove("hidden");
+      el("active-peer-name").textContent = peerName;
+
+      activeChatRoomId = [currentUser.uid, peerUid].sort().join("_");
+      if (unsubPrivateChat) unsubPrivateChat();
+
+      unsubPrivateChat = db.collection("private_chats").doc(activeChatRoomId).collection("messages")
+        .orderBy("timestamp", "asc").limitToLast(40)
+        .onSnapshot(snap => {
+          const win = el("private-chat-stream");
+          win.innerHTML = "";
+          snap.forEach(d => {
+            const m = d.data();
+            const b = document.createElement("div");
+            b.className = "chat-msg " + (m.senderUid === currentUser.uid ? "mine" : "other");
+            if (m.audioUrl) {
+              b.innerHTML = `<audio controls src="${escapeHTML(m.audioUrl)}" style="height:32px; width:180px;"></audio>`;
+            } else {
+              b.textContent = m.text;
+            }
+            win.appendChild(b);
+          });
+          win.scrollTop = win.scrollHeight;
+        });
+    }
+
+    el("btn-back-to-contacts").addEventListener("click", () => {
+      if (unsubPrivateChat) unsubPrivateChat();
+      el("chat-conversation-pane").classList.add("hidden");
+      el("chat-users-list-pane").classList.remove("hidden");
+    });
+
+    el("btn-send-private").addEventListener("click", sendTextMessage);
+    el("private-chat-input").addEventListener("keydown", e => { if (e.key === "Enter") sendTextMessage(); });
+
+    async function sendTextMessage() {
+      const inEl = el("private-chat-input");
+      const text = inEl.value.trim();
+      if (!text || !activeChatRoomId) return;
+      inEl.value = "";
+      await db.collection("private_chats").doc(activeChatRoomId).collection("messages").add({
+        text,
+        senderUid: currentUser.uid,
+        timestamp: FV.serverTimestamp()
+      });
+    }
+
+    el("btn-record-voice").addEventListener("click", async () => {
+      const btn = el("btn-record-voice");
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+        btn.classList.remove("recording");
+        setStatus("voice-status-txt", "Voice note uploading...", true);
+      } else {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        mediaRecorder.onstop = async () => {
+          const blob = new Blob(audioChunks, { type: "audio/webm" });
+          const file = new File([blob], "voice.webm", { type: "audio/webm" });
+          const audioUrl = await uploadMedia(file, "voice_notes");
+          await db.collection("private_chats").doc(activeChatRoomId).collection("messages").add({
+            audioUrl,
+            senderUid: currentUser.uid,
+            timestamp: FV.serverTimestamp()
+          });
+          setStatus("voice-status-txt", "");
+        };
+        mediaRecorder.start();
+        btn.classList.add("recording");
+        setStatus("voice-status-txt", "Recording audio... Click mic again to send.", true);
+      }
+    });
+
+    // Omegle Matchmaking + Camera Filters
+    let omegleLocalStream = null;
+    let omeglePeerConn = null;
+    let omegleRoomId = null;
+
+    el("camera-filter-select").addEventListener("change", (e) => {
+      const filterClass = e.target.value;
+      el("omegle-local-stream").className = `omegle-video ${filterClass}`;
+    });
+
+    async function setupOmegleMedia() {
+      if (!omegleLocalStream) {
+        omegleLocalStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        el("omegle-local-stream").srcObject = omegleLocalStream;
+      }
+    }
+
+    el("btn-omegle-find").addEventListener("click", async () => {
+      await setupOmegleMedia();
+      setStatus("omegle-status-txt", "Finding stranger...", true);
+      const queueRef = db.collection("omegle_queue");
+      const waitingSnap = await queueRef.where("status", "==", "waiting").limit(1).get();
+
+      if (!waitingSnap.empty && waitingSnap.docs[0].data().uid !== currentUser.uid) {
+        const matchDoc = waitingSnap.docs[0];
+        omegleRoomId = matchDoc.id;
+        await queueRef.doc(omegleRoomId).update({ status: "matched", calleeUid: currentUser.uid });
+
+        omeglePeerConn = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+        omegleLocalStream.getTracks().forEach(t => omeglePeerConn.addTrack(t, omegleLocalStream));
+        omeglePeerConn.ontrack = e => el("omegle-remote-stream").srcObject = e.streams[0];
+
+        const roomRef = db.collection("omegle_rooms").doc(omegleRoomId);
+        omeglePeerConn.onicecandidate = e => { if (e.candidate) roomRef.collection("calleeCandidates").add(e.candidate.toJSON()); };
+
+        const rData = (await roomRef.get()).data();
+        await omeglePeerConn.setRemoteDescription(new RTCSessionDescription(rData.offer));
+        const ans = await omeglePeerConn.createAnswer();
+        await omeglePeerConn.setLocalDescription(ans);
+        await roomRef.update({ answer: { type: ans.type, sdp: ans.sdp } });
+
+        roomRef.collection("callerCandidates").onSnapshot(s => {
+          s.docChanges().forEach(c => {
+            if (c.type === "added") omeglePeerConn.addIceCandidate(new RTCIceCandidate(c.doc.data()));
+          });
+        });
+        setStatus("omegle-status-txt", "Connected to Stranger!", true);
+      } else {
+        omegleRoomId = "omg_" + currentUser.uid;
+        await queueRef.doc(omegleRoomId).set({ uid: currentUser.uid, status: "waiting", createdAt: FV.serverTimestamp() });
+
+        omeglePeerConn = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+        omegleLocalStream.getTracks().forEach(t => omeglePeerConn.addTrack(t, omegleLocalStream));
+        omeglePeerConn.ontrack = e => el("omegle-remote-stream").srcObject = e.streams[0];
+
+        const roomRef = db.collection("omegle_rooms").doc(omegleRoomId);
+        omeglePeerConn.onicecandidate = e => { if (e.candidate) roomRef.collection("callerCandidates").add(e.candidate.toJSON()); };
+
+        const offer = await omeglePeerConn.createOffer();
+        await omeglePeerConn.setLocalDescription(offer);
+        await roomRef.set({ offer: { type: offer.type, sdp: offer.sdp }, callerUid: currentUser.uid });
+
+        roomRef.onSnapshot(snap => {
+          const d = snap.data();
+          if (d && d.answer && !omeglePeerConn.currentRemoteDescription) {
+            omeglePeerConn.setRemoteDescription(new RTCSessionDescription(d.answer));
+            setStatus("omegle-status-txt", "Connected to Stranger!", true);
+          }
+        });
+
+        roomRef.collection("calleeCandidates").onSnapshot(s => {
+          s.docChanges().forEach(c => {
+            if (c.type === "added") omeglePeerConn.addIceCandidate(new RTCIceCandidate(c.doc.data()));
+          });
+        });
+      }
+    });
+
+    el("btn-omegle-next").addEventListener("click", () => {
+      hangupOmegleCall();
+      setStatus("omegle-status-txt", "Call stopped.", false);
+    });
+
+    function hangupOmegleCall() {
+      if (omeglePeerConn) { omeglePeerConn.close(); omeglePeerConn = null; }
+      if (omegleLocalStream) { omegleLocalStream.getTracks().forEach(t => t.stop()); omegleLocalStream = null; }
+      el("omegle-local-stream").srcObject = null;
+      el("omegle-remote-stream").srcObject = null;
+      if (omegleRoomId) {
+        db.collection("omegle_queue").doc(omegleRoomId).delete().catch(() => {});
+        db.collection("omegle_rooms").doc(omegleRoomId).delete().catch(() => {});
+        omegleRoomId = null;
+      }
+    }
+
+    // Discover People & Follow / Follow Back
+    async function loadUsersDirectory() {
+      if (!currentUser) return;
+      if (unsubUsers) unsubUsers();
+      unsubUsers = db.collection("users").limit(40).onSnapshot(async snap => {
+        const list = el("users-directory-list");
+        list.innerHTML = "";
+
+        const myFollowingSnap = await db.collection("users").doc(currentUser.uid).collection("following").get();
+        const myFollowingIds = myFollowingSnap.docs.map(d => d.id);
+        const myFollowersSnap = await db.collection("users").doc(currentUser.uid).collection("followers").get();
+        const myFollowerIds = myFollowersSnap.docs.map(d => d.id);
+
+        snap.forEach(d => {
+          if (d.id === currentUser.uid || myBlockedUsers.includes(d.id)) return;
+
+          const u = d.data();
+          const targetUid = d.id;
+          const isFollowing = myFollowingIds.includes(targetUid);
+          const isFollower = myFollowerIds.includes(targetUid);
+          const followBtnText = isFollowing ? "Following" : (isFollower ? "Follow Back" : "Follow");
+
+          const itm = document.createElement("div");
+          itm.className = "user-list-item";
+          itm.innerHTML = `
+            <div style="display:flex; align-items:center; gap:8px;">
+              <div class="chat-user-avatar">${(u.fullName ? u.fullName[0] : "U").toUpperCase()}</div>
+              <div>
+                <strong style="color:#38bdf8; font-size:13px;">${escapeHTML(u.fullName || 'User')}</strong>
+                <div style="font-size:11px; color:#94a3b8;">@${escapeHTML(u.username || 'user')}</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:6px;">
+              <button class="btn btn-sm ${isFollowing ? 'btn-secondary' : 'btn-success'}" onclick="toggleFollow('${targetUid}')">${followBtnText}</button>
+              <button class="btn btn-sm btn-danger" onclick="blockUser('${targetUid}')">Block</button>
+            </div>
+          `;
+          list.appendChild(itm);
+        });
+      });
+    }
+
+    window.toggleFollow = async (targetUid) => {
+      if (!currentUser || targetUid === currentUser.uid) return;
+      const myFollowingRef = db.collection("users").doc(currentUser.uid).collection("following").doc(targetUid);
+      const targetFollowerRef = db.collection("users").doc(targetUid).collection("followers").doc(currentUser.uid);
+      const myUserRef = db.collection("users").doc(currentUser.uid);
+      const targetUserRef = db.collection("users").doc(targetUid);
+
+      await db.runTransaction(async t => {
+        const snap = await t.get(myFollowingRef);
+        if (snap.exists) {
+          t.delete(myFollowingRef);
+          t.delete(targetFollowerRef);
+          t.set(myUserRef, { followingCount: FV.increment(-1) }, { merge: true });
+          t.set(targetUserRef, { followersCount: FV.increment(-1) }, { merge: true });
+        } else {
+          t.set(myFollowingRef, { createdAt: FV.serverTimestamp() });
+          t.set(targetFollowerRef, { createdAt: FV.serverTimestamp() });
+          t.set(myUserRef, { followingCount: FV.increment(1) }, { merge: true });
+          t.set(targetUserRef, { followersCount: FV.increment(1) }, { merge: true });
+        }
+      });
+    };
+
+    window.blockUser = async (targetUid) => {
+      if (!confirm("Kya aap is user ko block karna chahte hain?")) return;
+      await db.collection("users").doc(currentUser.uid).update({ blockedUsers: FV.arrayUnion(targetUid) });
+      myBlockedUsers.push(targetUid);
+      alert("User block ho gaya!");
+      loadUsersDirectory();
+    };
+
+    // Profile & Highlights
+    async function loadProfileData() {
+      if (!currentUser) return;
+      const uDoc = await db.collection("users").doc(currentUser.uid).get();
+      if (uDoc.exists) {
+        const d = uDoc.data();
+        el("prof-name").textContent = d.fullName || "User";
+        el("prof-handle").textContent = "@" + (d.username || "user");
+        el("prof-bio").textContent = d.bio || "PulseChat member";
+        el("stat-followers").textContent = d.followersCount || 0;
+        el("stat-following").textContent = d.followingCount || 0;
+        el("prof-avatar").textContent = (d.fullName ? d.fullName[0] : "U").toUpperCase();
+      }
+
+      const pSnap = await db.collection("pulse_posts").where("authorUid", "==", currentUser.uid).get();
+      el("stat-posts").textContent = pSnap.size;
+
+      if (unsubHighlights) unsubHighlights();
+      unsubHighlights = db.collection("users").doc(currentUser.uid).collection("highlights")
+        .orderBy("createdAt", "desc").onSnapshot(snap => {
+          const shelf = el("profile-highlights-shelf");
+          shelf.innerHTML = "";
+          snap.forEach(doc => {
+            const h = doc.data();
+            const itm = document.createElement("div");
+            itm.className = "highlight-item";
+            itm.innerHTML = `
+              <div class="highlight-circle">${h.mediaUrl ? `<img src="${escapeHTML(h.mediaUrl)}" style="width:100%;height:100%;object-fit:cover;">` : '⭐'}</div>
+              <span class="highlight-title">${escapeHTML(h.title || 'Highlight')}</span>
+            `;
+            shelf.appendChild(itm);
+          });
+        });
+    }
+
+    el("btn-create-highlight").addEventListener("click", async () => {
+      const title = prompt("Highlight Title:");
+      if (!title || !title.trim()) return;
+      const mediaUrl = prompt("Image URL:");
+      if (!mediaUrl) return;
+      await db.collection("users").doc(currentUser.uid).collection("highlights").add({
+        title: title.trim().slice(0, 40),
+        mediaUrl: mediaUrl.trim(),
+        createdAt: FV.serverTimestamp()
+      });
+    });
+
+    // Settings
+    async function loadSettingsData() {
+      if (!currentUser) return;
+      const [uDoc, privateDoc] = await Promise.all([
+        db.collection("users").doc(currentUser.uid).get(),
+        db.collection("privateUsers").doc(currentUser.uid).get()
+      ]);
+      if (!uDoc.exists) return;
+      const d = uDoc.data();
+      const privateData = privateDoc.exists ? privateDoc.data() : {};
+
+      el("set-disp-name").textContent = d.fullName || "-";
+      el("set-disp-username").textContent = "@" + (d.username || "-");
+      el("set-disp-email").textContent = privateData.email || currentUser.email || "-";
+      el("set-disp-phone").textContent = privateData.phone || "Not added";
+      el("set-disp-joined").textContent = d.createdAt && d.createdAt.toDate
+        ? new Date(d.createdAt.toDate()).toLocaleDateString()
+        : "Recent";
+
+      el("edit-name").value = d.fullName || "";
+      el("edit-username").value = d.username || "";
+      el("edit-bio").value = d.bio || "";
+    }
+
+    el("btn-save-profile").addEventListener("click", async () => {
+      const fullName = el("edit-name").value.trim();
+      const username = el("edit-username").value.trim().toLowerCase();
+      const bio = el("edit-bio").value.trim();
+
+      if (!fullName || !username) return alert("Naam aur username khali nahi ho sakte.");
+      const btn = el("btn-save-profile");
+      btn.disabled = true;
+      try {
+        await db.collection("users").doc(currentUser.uid).update({ fullName, username, bio: bio.slice(0, 160) });
+        alert("Profile update ho gayi!");
+        await loadSettingsData();
+      } catch (err) { alert(err.message); }
+      finally { btn.disabled = false; }
+    });
+
+    el("btn-theme-toggle").addEventListener("click", () => {
+      document.body.classList.toggle("light-theme");
+      const isLight = document.body.classList.contains("light-theme");
+      el("btn-theme-toggle").textContent = isLight ? "☀️ Light Mode" : "🌙 Dark Mode";
+    });
+  </script>
+</body>
+</html>
