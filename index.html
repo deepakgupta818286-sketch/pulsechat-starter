@@ -170,8 +170,7 @@ body.screen-protected .private-call-box {
   
 
 <div id="recaptcha-container"></div>
-  
-<button id="mainLoginBtn" onclick="alert('Button Dabaya Gaya!'); login();">Login करें</button>
+<button id="mainLoginBtn" onclick="try { login(); } catch(e) { alert('Login Crash: ' + e.message); }">Login करें</button>
   
 <button id="mainSignupBtn" class="btn soft" style="width:100%;margin-top:9px;padding:14px" onclick="signup()">नया अकाउंट बनाएं / Sign Up</button>
   
