@@ -830,7 +830,80 @@ function setOnlineStatus(isOnline) {
 // Browser tab band ya refresh hone par offline mark karein
 window.addEventListener("beforeunload", () => setOnlineStatus(false));
   
+// --- SECURE FIREBASE EMAIL & PASSWORD AUTHENTICATION ---
 
+// 1. Sign Up Function
+async function signup() {
+  const name = document.getElementById("loginName") ? document.getElementById("loginName").value.trim() : "";
+  const email = document.getElementById("loginEmail") ? document.getElementById("loginEmail").value.trim() : "";
+  const pass = document.getElementById("loginPass") ? document.getElementById("loginPass").value.trim() : "";
+
+  if (!email || !pass) {
+    alert("कृपया ईमेल और कम से कम 6 अक्षरों का पासवर्ड दर्ज करें!");
+    return;
+  }
+
+  try {
+    const cred = await auth.createUserWithEmailAndPassword(email, pass);
+    const user = cred.user;
+
+    await fs.collection("users").doc(user.uid).set({
+      name: name || "PulseChat User",
+      email: email,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    alert("अकाउंट सफलतापूर्वक बन गया! PulseChat में आपका स्वागत है। 🎉");
+    const loginScr = document.getElementById("loginScreen");
+    const appScr = document.getElementById("app");
+    if (loginScr) loginScr.style.display = "none";
+    if (appScr) appScr.style.display = "block";
+  } catch (err) {
+    console.error("Signup Error:", err);
+    alert("साइनअप नहीं हो सका: " + err.message);
+  }
+}
+
+// 2. Login Function
+async function login() {
+  const email = document.getElementById("loginEmail") ? document.getElementById("loginEmail").value.trim() : "";
+  const pass = document.getElementById("loginPass") ? document.getElementById("loginPass").value.trim() : "";
+
+  if (!email || !pass) {
+    alert("कृपया अपना ईमेल और पासवर्ड दर्ज करें!");
+    return;
+  }
+
+  try {
+    await auth.signInWithEmailAndPassword(email, pass);
+    alert("लॉगिन सफल रहा! ✅");
+    const loginScr = document.getElementById("loginScreen");
+    const appScr = document.getElementById("app");
+    if (loginScr) loginScr.style.display = "none";
+    if (appScr) appScr.style.display = "block";
+  } catch (err) {
+    console.error("Login Error:", err);
+    alert("लॉगिन विफल: " + err.message);
+  }
+}
+
+// 3. Forgot Password Function
+async function forgotPassword() {
+  const email = document.getElementById("loginEmail") ? document.getElementById("loginEmail").value.trim() : "";
+  if (!email) {
+    alert("कृपया पहले अपना ईमेल दर्ज करें!");
+    return;
+  }
+
+  try {
+    await auth.sendPasswordResetEmail(email);
+    alert("पासवर्ड रीसेट लिंक आपके ईमेल पर भेज दिया गया है। 📩");
+  } catch (err) {
+    console.error("Reset Error:", err);
+    alert("लिंक भेजने में समस्या: " + err.message);
+  }
+    }
+  
 /* ================= PULSECHAT ADVANCED FEATURES ENGINE ================= */
 
 // 1. Anti-Screenshot & Screen Blur Guard
