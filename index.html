@@ -504,30 +504,22 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: pendingEmail, otp })
         });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data.customToken) throw new Error(data.error || "Galat ya expired OTP.");
+              const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Galat ya expired OTP.");
 
-        // The Worker custom token authenticates the OTP-verified UID; it does NOT
-        // automatically attach an email/password provider to that Firebase user.
-        const cred = await auth.signInWithCustomToken(data.customToken);
-        let user = cred.user;
-        const signupEmail = tempSignupData.email.trim().toLowerCase();
-        const passwordProvider = (user.providerData || []).find(p => p.providerId === "password");
-
-        if (passwordProvider) {
-          // A previous attempt may already have linked the credential before a later
-          // profile write failed. Do not try linkWithCredential a second time.
-          if ((user.email || passwordProvider.email || "").toLowerCase() !== signupEmail) {
-            throw new Error("Is Firebase UID par doosra email linked hai. Support se jaanch karwayein.");
-          }
+      const signupEmail = tempSignupData.email.trim().toLowerCase();
+      let cred;
+      try {
+        cred = await auth.createUserWithEmailAndPassword(signupEmail, tempSignupData.password);
+      } catch (authErr) {
+        if (authErr.code === "auth/email-already-in-use") {
+          cred = await auth.signInWithEmailAndPassword(signupEmail, tempSignupData.password);
         } else {
-          const emailCredential = firebase.auth.EmailAuthProvider.credential(
-            signupEmail,
-            tempSignupData.password
-          );
-          const linked = await user.linkWithCredential(emailCredential);
-          user = linked.user;
+          throw authErr;
         }
+      }
+      let user = cred.user;
+        
 
         const publicProfile = {
           fullName: tempSignupData.fullName,
