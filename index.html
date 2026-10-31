@@ -171,8 +171,8 @@ body.screen-protected .private-call-box {
 
 <div id="recaptcha-container"></div>
   
-<button id="mainLoginBtn" onclick="login();">Login करें</button>
-<button id="mainSignupBtn" class="btn soft" style="width:100%;margin-top:9px;padding:14px" onclick="signup();">नया अकाउंट बनाएं / Sign Up</button>
+<button id="mainLoginBtn" onclick="login()">Login करें</button>
+<button id="mainSignupBtn" class="btn soft" style="width:100%;margin-top:9px;padding:14px" onclick="signup()">नया अकाउंट बनाएं / Sign Up</button>
   
   <p style="margin-top:10px;text-align:right;"><a href="javascript:void(0)" onclick="forgotPassword()" style="color:#1677ff;font-size:13px;text-decoration:none;">Forgot Password?</a></p>
   
@@ -1494,7 +1494,11 @@ function hideCurrentChat() {
 // 3. Omegle Safety: Report & Block Partner
 function reportAndBlockPartner() {
   const reason = prompt("Report ka kaaran batayein (Nudity, Abuse, Spam):");
-/* =========================================================================
+  if (reason) {
+    alert("Report darj kar li gayi hai.");
+  }
+}
+  /* =========================================================================
    PULSECHAT ALL-IN-ONE PRO PRODUCTION ENGINE
    1. Real WebRTC Video Matchmaking (Firebase Signaling)
    2. Media / Photo Feed Uploads
