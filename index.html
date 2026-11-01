@@ -923,43 +923,112 @@
       });
     };
 
-    // 24h Stories
-    el("add-story-btn").addEventListener("click", () => el("story-file-input").click());
-    el("story-file-input").addEventListener("change", async e => {
-      const file = e.target.files[0];
-      if (!file || !currentUser) return;
-      try {
-        const url = await uploadMedia(file, "stories");
-        await db.collection("pulse_stories").add({
-          mediaUrl: url,
-          userUid: currentUser.uid,
-          createdAt: FV.serverTimestamp()
-        });
-        alert("Story uploaded!");
-      } catch (err) { alert(err.message); }
-      finally { e.target.value = ""; }
+      // 24h Stories Trigger - WhatsApp/Instagram Camera vs Gallery
+  const addStoryBtn = el("add-story-btn");
+  if (addStoryBtn) {
+    addStoryBtn.addEventListener("click", () => {
+      if (typeof window.triggerStoryChoice === "function") {
+        window.triggerStoryChoice();
+      } else {
+        const inp = el("story-file-input");
+        if (inp) inp.click();
+      }
     });
+  }
 
-    function listenStories() {
-      if (unsubStories) unsubStories();
-      const cutoff = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 24 * 60 * 60 * 1000));
-      unsubStories = db.collection("pulse_stories").where("createdAt", ">=", cutoff).orderBy("createdAt", "desc")
-        .onSnapshot(snap => {
-          const shelf = el("tray-stories");
-          shelf.querySelectorAll(".story-node").forEach(n => n.remove());
-          snap.forEach(doc => {
-            const s = doc.data();
-            const itm = document.createElement("div");
-            itm.className = "story-item story-node";
-            itm.innerHTML = `
-              <div class="story-circle"><img src="${s.mediaUrl}" style="width:100%;height:100%;object-fit:cover;"></div>
-              <span class="story-user">Story</span>
+  function listenStories() {
+    if (unsubStories) unsubStories();
+    const cutoff = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 24 * 60 * 60 * 1000));
+    unsubStories = db.collection("stories").where("createdAt", ">=", cutoff).orderBy("createdAt", "desc")
+      .onSnapshot(snap => {
+        const shelf = el("tray-stories");
+        if (!shelf) return;
+        shelf.querySelectorAll(".story-node").forEach(n => n.remove());
+
+        snap.forEach(doc => {
+          const s = doc.data();
+          const storyId = doc.id;
+          const itm = document.createElement("div");
+          itm.className = "story-item story-node";
+          itm.style.cursor = "pointer";
+
+          const previewImg = s.authorPhoto || s.mediaUrl || "";
+          itm.innerHTML = `
+            <div class="story-circle" style="border: 2px solid #2563eb; padding: 2px; border-radius: 50%; width: 56px; height: 56px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #1e293b;">
+              <img src="${previewImg}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" onerror="this.src='https://via.placeholder.com/56'">
+            </div>
+            <span class="story-user" style="font-size: 11px; text-align: center; max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; margin-top: 4px; color: #cbd5e1;">${s.authorName || 'Story'}</span>
+          `;
+
+          // Story click par direct full-screen player open hoga (Black screen fix)
+          itm.onclick = () => {
+            if (typeof window.recordStoryView === "function") {
+              window.recordStoryView(storyId, s.authorUid);
+            }
+
+            const isAuthor = currentUser && currentUser.uid === s.authorUid;
+            const viewCount = (s.viewers && s.viewers.length) || s.viewCount || 0;
+
+            const viewerModal = document.createElement("div");
+            viewerModal.id = "active-story-viewer";
+            viewerModal.style.cssText = "position:fixed; inset:0; background:#000; z-index:99999; display:flex; flex-direction:column; justify-content:space-between; align-items:center;";
+
+            const isVideo = s.mediaType === "video" || (s.mediaUrl && s.mediaUrl.startsWith("data:video"));
+
+            viewerModal.innerHTML = `
+              <!-- Top bar -->
+              <div style="width:100%; padding:14px 16px; display:flex; justify-content:space-between; align-items:center; background:linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); z-index:10; box-sizing:border-box;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <img src="${previewImg}" style="width:36px; height:36px; border-radius:50%; object-fit:cover; border:1px solid #fff;">
+                  <span style="color:#fff; font-weight:600; font-size:14px;">${s.authorName || 'User'}</span>
+                </div>
+                <button id="close-story-viewer-btn" style="background:transparent; border:none; color:#fff; font-size:24px; cursor:pointer;">✕</button>
+              </div>
+
+              <!-- Media Content -->
+              <div style="width:100%; flex:1; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative;">
+                ${isVideo 
+                  ? `<video src="${s.mediaUrl}" autoplay playsinline style="max-width:100%; max-height:100%; object-fit:contain;"></video>` 
+                  : `<img src="${s.mediaUrl}" style="max-width:100%; max-height:100%; object-fit:contain;">`}
+              </div>
+
+              <!-- Bottom Bar with Views Tracker -->
+              <div style="width:100%; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; background:linear-gradient(to top, rgba(0,0,0,0.8), transparent); z-index:10; box-sizing:border-box;">
+                <div id="btn-view-list" style="display:flex; align-items:center; gap:6px; color:#fff; font-size:14px; cursor:${isAuthor ? 'pointer' : 'default'};">
+                  <span>👁️</span> <strong>${viewCount} views</strong>
+                </div>
+                ${s.music ? `<div style="color:#38bdf8; font-size:12px;">🎵 ${s.music.title || 'Song'}</div>` : '<div></div>'}
+              </div>
             `;
-            itm.onclick = () => window.open(s.mediaUrl, '_blank');
-            shelf.appendChild(itm);
-          });
+
+            document.body.appendChild(viewerModal);
+
+            let storyAudio = null;
+            if (s.music && s.music.audioUrl) {
+              storyAudio = new Audio(s.music.audioUrl);
+              storyAudio.play().catch(() => {});
+            }
+
+            viewerModal.querySelector("#close-story-viewer-btn").onclick = () => {
+              if (storyAudio) { storyAudio.pause(); storyAudio = null; }
+              viewerModal.remove();
+            };
+
+            const viewListBtn = viewerModal.querySelector("#btn-view-list");
+            if (viewListBtn && isAuthor) {
+              viewListBtn.onclick = () => {
+                if (typeof window.openStoryViewersModal === "function") {
+                  window.openStoryViewersModal(storyId);
+                }
+              };
+            }
+          };
+
+          shelf.appendChild(itm);
         });
-    }
+      });
+  }
+    
 
     // WhatsApp 1-on-1 Chat + Voice Notes
     let activeChatRoomId = null;
@@ -1362,10 +1431,12 @@ hlSaveBtn.addEventListener("click", async () => {
       updateData.photoURL = avatarBase64;
     }
 
-    await db.collection("users").doc(currentUser.uid).update(updateData);
-    alert("Profile picture aur details update ho gayi!");
-    await loadSettingsData();
-    if (typeof loadProfileData === "function") await loadProfileData();
+          await db.collection("users").doc(currentUser.uid).update(updateData);
+      alert("Profile picture aur details update ho gayi!");
+      await loadSettingsData();
+      if (typeof loadProfileData === "function") await loadProfileData();
+    
+    
   } catch (err) {
     alert(err.message);
   } finally {
@@ -1417,8 +1488,37 @@ async function openUserProfile(targetUid) {
     followersCount.textContent = (u.followers && u.followers.length) || 0;
     followingCount.textContent = (u.following && u.following.length) || 0;
 
-    const postsSnap = await db.collection("posts").where("authorUid", "==", targetUid).get();
-    postsCount.textContent = postsSnap.size;
+        
+    // Instagram style posts grid render logic
+    const gridContainer = el("modal-user-posts-grid") || el("user-posts-grid");
+    if (gridContainer) {
+      gridContainer.innerHTML = "";
+      if (postsSnap.empty) {
+        gridContainer.innerHTML = '<p style="grid-column: span 3; text-align: center; color: #64748b; font-size: 13px; padding: 20px 0;">No posts yet</p>';
+      } else {
+        const postsList = [];
+        postsSnap.forEach(doc => postsList.push({ id: doc.id, ...doc.data() }));
+        postsList.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+        postsList.forEach(p => {
+          const item = document.createElement("div");
+          item.style.cssText = "position:relative; width:100%; aspect-ratio:1/1; background:#0f172a; overflow:hidden; border-radius:4px; cursor:pointer;";
+
+          const isVideo = p.mediaType === "video" || (p.mediaUrl && p.mediaUrl.match(/\.(mp4|webm|mov)/i));
+          if (isVideo) {
+            item.innerHTML = `
+              <video src="${p.mediaUrl}" style="width:100%; height:100%; object-fit:cover; pointer-events:none;"></video>
+              <span style="position:absolute; top:4px; right:4px; font-size:10px; background:rgba(0,0,0,0.6); padding:2px 4px; border-radius:3px; color:#fff;">▶</span>
+            `;
+          } else if (p.mediaUrl) {
+            item.innerHTML = `<img src="${p.mediaUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+          } else {
+            item.innerHTML = `<div style="padding:6px; font-size:11px; color:#cbd5e1; height:100%; overflow:hidden;">${p.text || "Post"}</div>`;
+          }
+          gridContainer.appendChild(item);
+        });
+      }
+    }
   } catch (err) {
     console.error("Profile load error:", err);
   }
@@ -1442,26 +1542,71 @@ const musicSearchInput = el("music-search-query");
 const musicResultsBox = el("music-search-results");
 const selectedBadge = el("selected-music-badge");
 
-// 1. File choose hote hi modal kholna
-if (storyFileInput) {
-  storyFileInput.addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    selectedStoryMedia = file;
+  // 1. File choose hote hi modal kholna + Overlay controls (Music & Emoji)
+  if (storyFileInput) {
+    // Agar direct story button par click ho toh Camera/Gallery sheet khule
+    const addStoryTriggers = document.querySelectorAll(".btn-add-story, #btn-add-story, .story-create-btn");
+    addStoryTriggers.forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof window.triggerStoryChoice === "function") {
+          window.triggerStoryChoice();
+        } else {
+          storyFileInput.click();
+        }
+      });
+    });
 
-    const fileURL = URL.createObjectURL(file);
-    if (file.type.startsWith("video")) {
-      previewBox.innerHTML = `<video src="${fileURL}" autoplay muted loop style="width:100%; height:100%; object-fit:cover;"></video>`;
-    } else {
-      previewBox.innerHTML = `<img src="${fileURL}" style="width:100%; height:100%; object-fit:cover;">`;
-    }
+    storyFileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      selectedStoryMedia = file;
 
-    currentSelectedTrack = null;
-    selectedBadge.style.display = "none";
-    musicResultsBox.innerHTML = `<div style="text-align:center; padding:20px 0; color:#64748b; font-size:11px;">Search trending songs (Arijit, Sidhu, Diljit...)</div>`;
-    storyModal.style.display = "flex";
-  });
-}
+      const fileURL = URL.createObjectURL(file);
+      const isVid = file.type.startsWith("video");
+      
+      previewBox.style.position = "relative";
+      previewBox.innerHTML = `
+        ${isVid 
+          ? `<video src="${fileURL}" autoplay muted loop playsinline style="width:100%; height:100%; object-fit:contain; background:#000;"></video>` 
+          : `<img src="${fileURL}" style="width:100%; height:100%; object-fit:contain; background:#000;">`}
+        <div style="position:absolute; top:12px; right:12px; display:flex; gap:10px; z-index:10;">
+          <button type="button" id="btn-story-music-overlay" style="background:rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.3); color:#fff; border-radius:50%; width:36px; height:36px; font-size:16px; cursor:pointer;">🎵</button>
+          <button type="button" id="btn-story-text-overlay" style="background:rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.3); color:#fff; border-radius:50%; width:36px; height:36px; font-size:16px; cursor:pointer;">😀</button>
+        </div>
+      `;
+
+      // Overlay Music click trigger
+      setTimeout(() => {
+        const musicOverlayBtn = document.getElementById("btn-story-music-overlay");
+        if (musicOverlayBtn && musicSearchInput) {
+          musicOverlayBtn.onclick = () => {
+            musicSearchInput.focus();
+            musicSearchInput.scrollIntoView({ behavior: 'smooth' });
+          };
+        }
+        const textOverlayBtn = document.getElementById("btn-story-text-overlay");
+        if (textOverlayBtn) {
+          textOverlayBtn.onclick = () => {
+            const sticker = prompt("Add text/emoji sticker to story:");
+            if (sticker) {
+              const stickerDiv = document.createElement("div");
+              stickerDiv.innerText = sticker;
+              stickerDiv.style.cssText = "position:absolute; top:45%; left:50%; transform:translate(-50%, -50%); color:#fff; font-size:24px; font-weight:700; text-shadow:0 2px 4px rgba(0,0,0,0.8); pointer-events:none;";
+              previewBox.appendChild(stickerDiv);
+            }
+          };
+        }
+      }, 50);
+
+      currentSelectedTrack = null;
+      if (selectedBadge) selectedBadge.style.display = "none";
+      if (musicResultsBox) musicResultsBox.innerHTML = '<div style="text-align:center; padding:20px 0; color:#64748b; font-size:11px;">Search songs above...</div>';
+      storyModal.style.display = "flex";
+    });
+  }
+    
 
 // 2. Real iTunes Search API se Music khojna
 async function searchRealMusic(query) {
@@ -1575,19 +1720,25 @@ if (el("btn-publish-story")) {
     try {
       const mediaBase64 = await uploadMedia(selectedStoryMedia, "stories");
 
-      await db.collection("stories").add({
-        authorUid: currentUser.uid,
-        authorName: currentUser.displayName || "User",
-        mediaUrl: mediaBase64,
-        mediaType: selectedStoryMedia.type.startsWith("video") ? "video" : "image",
-        music: currentSelectedTrack ? {
-          title: currentSelectedTrack.name,
-          artist: currentSelectedTrack.artist,
-          url: currentSelectedTrack.audioUrl,
-          cover: currentSelectedTrack.cover
-        } : null,
-        createdAt: FV.serverTimestamp()
-      });
+              await db.collection("stories").add({
+          authorUid: currentUser.uid,
+          authorName: currentUser.displayName || "User",
+          authorPhoto: currentUser.photoURL || "",
+          mediaUrl: mediaBase64,
+          mediaType: selectedStoryMedia.type.startsWith("video") ? "video" : "image",
+          caption: "",
+          stickers: [],
+          viewers: [],
+          viewCount: 0,
+          music: currentSelectedTrack ? {
+            title: currentSelectedTrack.name,
+            artist: currentSelectedTrack.artist,
+            audioUrl: currentSelectedTrack.audioUrl,
+            cover: currentSelectedTrack.cover
+          } : null,
+          createdAt: FV.serverTimestamp()
+        });
+      
 
       alert("Story with real music uploaded!");
       storyModal.style.display = "none";
@@ -1604,38 +1755,39 @@ if (el("btn-publish-story")) {
   });
 }
     // --- 1. Mega Emoji Picker & Auto-Insert Logic ---
-const emojiToggleBtn = el("btn-toggle-emoji");
-const emojiPickerBox = el("chat-emoji-picker");
-const chatInput = el("private-chat-input");
+function initEmojiLogic() {
+  const emojiToggleBtn = document.getElementById("btn-toggle-emoji");
+  const emojiPickerBox = document.getElementById("chat-emoji-picker");
+  const chatInput = document.getElementById("private-chat-input");
 
-if (emojiToggleBtn && emojiPickerBox && chatInput) {
-  emojiToggleBtn.addEventListener("click", (e) => {
+  if (!emojiToggleBtn || !emojiPickerBox) return;
+
+  emojiToggleBtn.onclick = function(e) {
+    e.preventDefault();
     e.stopPropagation();
-    const isHidden = emojiPickerBox.style.display === "none";
-    emojiPickerBox.style.display = isHidden ? "flex" : "none";
-  });
+    const isClosed = emojiPickerBox.style.display === "none" || !emojiPickerBox.style.display;
+    emojiPickerBox.style.display = isClosed ? "flex" : "none";
+  };
 
-  document.addEventListener("click", (e) => {
+  document.addEventListener("click", function(e) {
     if (!emojiPickerBox.contains(e.target) && e.target !== emojiToggleBtn) {
       emojiPickerBox.style.display = "none";
     }
   });
 
-  document.querySelectorAll(".emoji-item").forEach(item => {
-    item.addEventListener("click", () => {
-      chatInput.value += item.textContent;
-      chatInput.focus();
-    });
-  });
-
-  chatInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      const sendBtn = el("btn-send-private");
-      if (sendBtn) sendBtn.click();
-    }
+  document.querySelectorAll(".emoji-item").forEach(function(item) {
+    item.onclick = function(e) {
+      e.stopPropagation();
+      if (chatInput) {
+        chatInput.value += item.textContent.trim();
+        chatInput.focus();
+      }
+    };
   });
 }
+initEmojiLogic();
+    
+
 
 // --- 2. Live Online & Realtime Presence System ---
 if (typeof currentUser !== "undefined" && currentUser) {
@@ -1672,6 +1824,110 @@ if (chatInput) {
     }, 2000);
   });
 }
+    // --- WhatsApp/Instagram Style Story Engine: Options, Views & Black Screen Fix ---
+window.triggerStoryChoice = function() {
+  const existingSheet = document.getElementById("story-choice-sheet");
+  if (existingSheet) existingSheet.remove();
+
+  const sheet = document.createElement("div");
+  sheet.id = "story-choice-sheet";
+  sheet.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.7); display:flex; align-items:flex-end; z-index:99999;";
+  sheet.innerHTML = `
+    <div style="background:#1e293b; width:100%; border-radius:18px 18px 0 0; padding:20px; box-sizing:border-box; color:#fff; display:flex; flex-direction:column; gap:12px;">
+      <div style="font-weight:600; font-size:16px; text-align:center; margin-bottom:6px;">Create Story</div>
+      <label style="background:#2563eb; padding:12px; border-radius:10px; text-align:center; font-weight:500; cursor:pointer;">
+        📷 Take Photo / Video (Camera)
+        <input type="file" accept="image/*,video/*" capture="environment" style="display:none;" id="camera-file-input">
+      </label>
+      <label style="background:#334155; padding:12px; border-radius:10px; text-align:center; font-weight:500; cursor:pointer;">
+        🖼️ Choose from Gallery
+        <input type="file" accept="image/*,video/*" style="display:none;" id="gallery-file-input">
+      </label>
+      <button onclick="document.getElementById('story-choice-sheet').remove()" style="background:transparent; border:none; color:#94a3b8; padding:10px; font-size:14px; cursor:pointer;">Cancel</button>
+    </div>
+  `;
+  document.body.appendChild(sheet);
+
+  const forwardFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    sheet.remove();
+    const origInput = el("story-file-input");
+    if (origInput) {
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      origInput.files = dt.files;
+      origInput.dispatchEvent(new Event("change"));
+    }
+  };
+
+  document.getElementById("camera-file-input").addEventListener("change", forwardFile);
+  document.getElementById("gallery-file-input").addEventListener("change", forwardFile);
+};
+
+// Story View Tracker & Viewer List Logic
+window.recordStoryView = async function(storyId, authorUid) {
+  if (!currentUser || currentUser.uid === authorUid) return;
+  try {
+    const storyRef = db.collection("stories").doc(storyId);
+    const doc = await storyRef.get();
+    if (!doc.exists) return;
+    const data = doc.data();
+    const viewers = data.viewers || [];
+    const alreadyViewed = viewers.some(v => v.uid === currentUser.uid);
+    if (!alreadyViewed) {
+      await storyRef.update({
+        viewers: FV.arrayUnion({
+          uid: currentUser.uid,
+          name: currentUser.displayName || "User",
+          photoURL: currentUser.photoURL || "",
+          viewedAt: new Date().toISOString()
+        }),
+        viewCount: (data.viewCount || 0) + 1
+      });
+    }
+  } catch (e) {
+    console.error("View track error:", e);
+  }
+};
+
+window.openStoryViewersModal = async function(storyId) {
+  try {
+    const doc = await db.collection("stories").doc(storyId).get();
+    if (!doc.exists) return;
+    const story = doc.data();
+    const viewers = story.viewers || [];
+
+    const modal = document.createElement("div");
+    modal.id = "story-viewers-modal";
+    modal.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.8); display:flex; flex-direction:column; justify-content:flex-end; z-index:100001;";
+    modal.innerHTML = `
+      <div style="background:#0f172a; height:60%; border-radius:20px 20px 0 0; padding:18px; display:flex; flex-direction:column; color:#fff;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1e293b; padding-bottom:12px;">
+          <div style="font-weight:600; font-size:16px;">Viewed by (${viewers.length})</div>
+          <button onclick="document.getElementById('story-viewers-modal').remove()" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer;">✕</button>
+        </div>
+        <div style="flex:1; overflow-y:auto; padding:10px 0; display:flex; flex-direction:column; gap:12px;">
+          ${viewers.length === 0 ? '<p style="text-align:center; color:#64748b; margin-top:20px;">No views yet</p>' : ''}
+          ${viewers.map(v => `
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:38px; height:38px; border-radius:50%; background:#334155; overflow:hidden; display:flex; align-items:center; justify-content:center; font-weight:600;">
+                ${v.photoURL ? `<img src="${v.photoURL}" style="width:100%; height:100%; object-fit:cover;">` : (v.name[0] || 'U')}
+              </div>
+              <div style="flex:1;">
+                <div style="font-size:14px; font-weight:500;">${v.name}</div>
+                <div style="font-size:11px; color:#64748b;">${new Date(v.viewedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  } catch (err) {
+    console.error("Viewers list error:", err);
+  }
+};
     
   </script>
   <div id="custom-highlight-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px); z-index:9999; align-items:center; justify-content:center; padding:16px;">
