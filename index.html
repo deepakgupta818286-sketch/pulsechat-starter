@@ -1895,6 +1895,53 @@ hlSaveBtn.addEventListener("click", async () => {
       const isLight = document.body.classList.contains("light-theme");
       el("btn-theme-toggle").textContent = isLight ? "☀️ Light Mode" : "🌙 Dark Mode";
     });
+        el("btn-save-profile").addEventListener("click", async () => {
+      if (!currentUser) return alert("Pehle login karein.");
+
+      const fullName = el("edit-name").value.trim();
+      const username = el("edit-username").value.trim().toLowerCase();
+      const bio = el("edit-bio").value.trim();
+      const avatarFile = el("edit-avatar-file").files[0];
+
+      if (!fullName || !username) {
+        return alert("Naam aur username bharna anivarya hai.");
+      }
+
+      const btn = el("btn-save-profile");
+      btn.disabled = true;
+      btn.innerText = "Saving...";
+
+      try {
+        let updateData = {
+          fullName,
+          username,
+          bio: bio.slice(0, 100),
+          updatedAt: FV.serverTimestamp()
+        };
+
+        if (avatarFile) {
+          const photoURL = await uploadMedia(avatarFile, "avatars");
+          if (photoURL) {
+            updateData.photoURL = photoURL;
+          }
+        }
+
+        await db.collection("users").doc(currentUser.uid).set(updateData, { merge: true });
+        alert("Profile details safaltapoorvak update ho gayi!");
+
+        if (typeof loadSettingsData === "function") await loadSettingsData();
+        if (typeof loadProfileData === "function") await loadProfileData();
+
+        navigate("view-profile");
+      } catch (err) {
+        console.error("Save error:", err);
+        alert("Profile save karne mein error: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Save Profile Changes";
+      }
+    });
+    
     // Open User Profile Modal Function
 async function openUserProfile(targetUid) {
   if (!targetUid) return;
