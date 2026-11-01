@@ -1887,41 +1887,7 @@ hlSaveBtn.addEventListener("click", async () => {
       el("edit-bio").value = d.bio || "";
     }
 
-    el("btn-save-profile").addEventListener("click", async () => {
-  const fullName = el("edit-name").value.trim();
-  const username = el("edit-username").value.trim().toLowerCase();
-  const bio = el("edit-bio").value.trim();
-  const avatarFile = el("edit-avatar-file").files[0];
-
-  if (!fullName || !username) return alert("Naam aur username khali nahi ho sakte.");
-
-  const btn = el("btn-save-profile");
-  btn.disabled = true;
-
-  try {
-    let updateData = {
-      fullName,
-      username,
-      bio: bio.slice(0, 160)
-    };
-
-    if (avatarFile) {
-      const avatarBase64 = await uploadMedia(avatarFile, "avatars");
-      updateData.photoURL = avatarBase64;
-    }
-
-          await db.collection("users").doc(currentUser.uid).update(updateData);
-      alert("Profile picture aur details update ho gayi!");
-      await loadSettingsData();
-      if (typeof loadProfileData === "function") await loadProfileData();
     
-    
-  } catch (err) {
-    alert(err.message);
-  } finally {
-    btn.disabled = false;
-  }
-});
     
 
     el("btn-theme-toggle").addEventListener("click", () => {
