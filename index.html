@@ -842,6 +842,73 @@
     });
 
     function listenFeed() {
+
+  // OWN POST MANAGEMENT
+window.openPostMenu = async function(postId) {
+  const choices = prompt(
+    "Apni Post Manage Karein:\n\n1 = Edit\n2 = Hide from Profile\n3 = Archive\n4 = Delete"
+  );
+
+  if (!choices) return;
+
+  const postRef = db.collection("pulse_posts").doc(postId);
+
+  try {
+    const snap = await postRef.get();
+
+    if (!snap.exists) return alert("Post nahi mili.");
+
+    const post = snap.data();
+
+    if (post.authorUid !== currentUser.uid) {
+      return alert("Aap sirf apni post manage kar sakte hain.");
+    }
+
+    if (choices === "1") {
+      const newText = prompt("Naya caption likhein:", post.text || "");
+      if (newText === null) return;
+
+      await postRef.update({
+        text: newText.slice(0, 2000),
+        updatedAt: FV.serverTimestamp()
+      });
+
+      alert("Post update ho gayi!");
+    }
+
+    else if (choices === "2") {
+      await postRef.update({
+        hiddenFromProfile: true,
+        updatedAt: FV.serverTimestamp()
+      });
+
+      alert("Post profile se hide ho gayi.");
+    }
+
+    else if (choices === "3") {
+      await postRef.update({
+        isArchived: true,
+        archivedAt: FV.serverTimestamp()
+      });
+
+      alert("Post Archive mein chali gayi.");
+    }
+
+    else if (choices === "4") {
+      if (!confirm("Post Recently Deleted mein bhejein?")) return;
+
+      await postRef.update({
+        isDeleted: true,
+        deletedAt: FV.serverTimestamp()
+      });
+
+      alert("Post Recently Deleted mein bhej di gayi.");
+    }
+
+  } catch (err) {
+    alert("Error: " + err.message);
+  }
+};
       if (!currentUser) return;
       if (unsubFeed) unsubFeed();
       unsubFeed = db.collection("pulse_posts").orderBy("createdAt", "desc").limit(30)
@@ -850,6 +917,8 @@
           box.innerHTML = "";
           snap.forEach(doc => {
             const p = doc.data();
+            // Archived aur deleted posts public feed mein nahi dikhenge
+if (p.isArchived === true || p.isDeleted === true) return;
             if (myBlockedUsers.includes(p.authorUid)) return;
 
                 const likes = Array.isArray(p.likes) ? p.likes : [];
@@ -864,9 +933,19 @@
 
     card.innerHTML = `
       <div class="post-header" style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px;">
-        <span class="post-user" style="font-weight:600; color:#38bdf8;">${escapeHTML(author)}</span>
-        <span style="font-size:11px; color:#64748b;">${escapeHTML(time)}</span>
-      </div>
+  <span class="post-user" style="font-weight:600; color:#38bdf8;">${escapeHTML(author)}</span>
+
+  <div style="display:flex; align-items:center; gap:10px;">
+    <span style="font-size:11px; color:#64748b;">${escapeHTML(time)}</span>
+
+    ${p.authorUid === currentUser.uid ? `
+      <button onclick="openPostMenu('${doc.id}')"
+        style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;">
+        ⋮
+      </button>
+    ` : ""}
+  </div>
+</div>
       ${p.text ? `<div class="post-text" style="padding:0 12px 8px 12px; color:#f1f5f9; font-size:14px;">${escapeHTML(p.text)}</div>` : ""}
       ${p.mediaUrl ? `
         <div class="post-media-container" style="position:relative; width:100%; cursor:pointer; overflow:hidden; background:#000;">
