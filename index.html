@@ -766,41 +766,86 @@
     el("btn-account-logout").addEventListener("click", () => auth.signOut().catch(err => alert(err.message)));
 
     // Media Storage Upload Engine
-    async function uploadMedia(file, folder, onProg) {
+    
+// Media Storage Upload Engine
+async function uploadMedia(file, folder, onProg) {
   if (!currentUser) throw new Error("Pehle login karein.");
   if (!file) throw new Error("File select karein.");
 
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target.result;
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const MAX_WIDTH = 700;
-        let targetWidth = img.width;
-        let targetHeight = img.height;
+  let uploadFile = file;
+  let extension = file.name.split(".").pop() || "file";
 
-        if (img.width > MAX_WIDTH) {
-          const scaleSize = MAX_WIDTH / img.width;
-          targetWidth = MAX_WIDTH;
-          targetHeight = img.height * scaleSize;
-        }
+  // Compress images before upload
+  if (file.type.startsWith("image/")) {
+    uploadFile = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
 
-        canvas.width = targetWidth;
-        canvas.height = targetHeight;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+      reader.onload = (event) => {
+        const img = new Image();
 
-        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.7);
-        resolve(compressedBase64);
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const maxWidth = 1000;
+          const scale = Math.min(1, maxWidth / img.width);
+
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          canvas.toBlob(
+            blob => blob
+              ? resolve(blob)
+              : reject(new Error("Image compress nahi hui.")),
+            "image/jpeg",
+            0.80
+          );
+        };
+
+        img.onerror = () => reject(new Error("Image process nahi hui."));
+        img.src = event.target.result;
       };
-      img.onerror = () => reject(new Error("Image process nahi ho saki."));
-    };
-    reader.onerror = () => reject(new Error("File read karne mein dikkat hui."));
+
+      reader.onerror = () => reject(new Error("File read nahi hui."));
+      reader.readAsDataURL(file);
+    });
+
+    extension = "jpg";
+  }
+
+  const filePath =
+    `${folder}/${currentUser.uid}/${Date.now()}.${extension}`;
+
+  const uploadTask = storage.ref().child(filePath).put(uploadFile, {
+    contentType: file.type.startsWith("image/")
+      ? "image/jpeg"
+      : file.type
   });
-    }
+
+  return new Promise((resolve, reject) => {
+    uploadTask.on(
+      "state_changed",
+      snapshot => {
+        if (typeof onProg === "function") {
+          onProg(
+            (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+          );
+        }
+      },
+      error => reject(error),
+      async () => {
+        try {
+          const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+          resolve(downloadURL);
+        } catch (error) {
+          reject(error);
+        }
+      }
+    );
+  });
+}
+    
     
 
     // Feed Post Creation & Listening
