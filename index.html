@@ -841,17 +841,12 @@
       }
     });
 
-    function listenFeed() {
-
-  // OWN POST MANAGEMENT
-window.openPostMenu = async function(postId) {
-
+// OWN POST MANAGEMENT
 window.openPostMenu = async function(postId) {
   if (document.getElementById("post-options-menu")) return;
 
   const menu = document.createElement("div");
   menu.id = "post-options-menu";
-
   menu.style.cssText = `
     position:fixed;inset:0;z-index:999999;
     background:rgba(0,0,0,.7);
@@ -862,30 +857,12 @@ window.openPostMenu = async function(postId) {
     <div style="background:#172033;color:white;width:100%;
       max-width:500px;padding:20px;border-radius:20px 20px 0 0;
       box-sizing:border-box;">
-
-      <h3 style="text-align:center;margin:5px 0 15px;">
-        Post Options
-      </h3>
-
-      <button data-action="edit" style="width:100%;padding:16px;
-        background:none;border:0;color:white;text-align:left;
-        font-size:16px;">✏️ Edit Post</button>
-
-      <button data-action="hide" style="width:100%;padding:16px;
-        background:none;border:0;color:white;text-align:left;
-        font-size:16px;">👁️ Hide from Profile</button>
-
-      <button data-action="archive" style="width:100%;padding:16px;
-        background:none;border:0;color:white;text-align:left;
-        font-size:16px;">📦 Archive</button>
-
-      <button data-action="delete" style="width:100%;padding:16px;
-        background:none;border:0;color:#ff5555;text-align:left;
-        font-size:16px;">🗑️ Delete</button>
-
-      <button data-action="cancel" style="width:100%;padding:14px;
-        background:#334155;border:0;border-radius:10px;
-        color:white;margin-top:10px;">Cancel</button>
+      <h3 style="text-align:center;margin:5px 0 15px;">Post Options</h3>
+      <button data-action="edit" style="width:100%;padding:16px;background:none;border:0;color:white;text-align:left;font-size:16px;">✏️ Edit Post</button>
+      <button data-action="hide" style="width:100%;padding:16px;background:none;border:0;color:white;text-align:left;font-size:16px;">👁️ Hide from Profile</button>
+      <button data-action="archive" style="width:100%;padding:16px;background:none;border:0;color:white;text-align:left;font-size:16px;">📦 Archive</button>
+      <button data-action="delete" style="width:100%;padding:16px;background:none;border:0;color:#ff5555;text-align:left;font-size:16px;">🗑️ Delete</button>
+      <button data-action="cancel" style="width:100%;padding:14px;background:#334155;border:0;border-radius:10px;color:white;margin-top:10px;">Cancel</button>
     </div>
   `;
 
@@ -934,13 +911,11 @@ window.openPostMenu = async function(postId) {
 
       const cancel = document.createElement("button");
       cancel.textContent = "Cancel";
-      cancel.style.cssText =
-        "flex:1;padding:12px;background:#334155;color:white;border:0;border-radius:8px;";
+      cancel.style.cssText = "flex:1;padding:12px;background:#334155;color:white;border:0;border-radius:8px;";
 
       const ok = document.createElement("button");
       ok.textContent = editValue !== null ? "Save" : "Confirm";
-      ok.style.cssText =
-        "flex:1;padding:12px;background:#0284c7;color:white;border:0;border-radius:8px;";
+      ok.style.cssText = "flex:1;padding:12px;background:#0284c7;color:white;border:0;border-radius:8px;";
 
       cancel.onclick = () => {
         box.remove();
@@ -963,6 +938,7 @@ window.openPostMenu = async function(postId) {
 
   menu.addEventListener("click", async function(e) {
     const button = e.target.closest("button[data-action]");
+
     if (!button) {
       if (e.target === menu) menu.remove();
       return;
@@ -992,12 +968,7 @@ window.openPostMenu = async function(postId) {
       }
 
       if (action === "edit") {
-        const value = await popup(
-          "Edit Post",
-          "Apna caption badlein:",
-          post.text || ""
-        );
-
+        const value = await popup("Edit Post", "Apna caption badlein:", post.text || "");
         if (value === null) return;
 
         await ref.update({
@@ -1047,6 +1018,11 @@ window.openPostMenu = async function(postId) {
     }
   });
 };
+    
+    function listenFeed() {
+
+
+
   
       if (!currentUser) return;
       if (unsubFeed) unsubFeed();
