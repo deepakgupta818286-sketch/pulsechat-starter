@@ -845,70 +845,209 @@
 
   // OWN POST MANAGEMENT
 window.openPostMenu = async function(postId) {
-  const choices = prompt(
-    "Apni Post Manage Karein:\n\n1 = Edit\n2 = Hide from Profile\n3 = Archive\n4 = Delete"
-  );
 
-  if (!choices) return;
+window.openPostMenu = async function(postId) {
+  if (document.getElementById("post-options-menu")) return;
 
-  const postRef = db.collection("pulse_posts").doc(postId);
+  const menu = document.createElement("div");
+  menu.id = "post-options-menu";
 
-  try {
-    const snap = await postRef.get();
+  menu.style.cssText = `
+    position:fixed;inset:0;z-index:999999;
+    background:rgba(0,0,0,.7);
+    display:flex;align-items:flex-end;justify-content:center;
+  `;
 
-    if (!snap.exists) return alert("Post nahi mili.");
+  menu.innerHTML = `
+    <div style="background:#172033;color:white;width:100%;
+      max-width:500px;padding:20px;border-radius:20px 20px 0 0;
+      box-sizing:border-box;">
 
-    const post = snap.data();
+      <h3 style="text-align:center;margin:5px 0 15px;">
+        Post Options
+      </h3>
 
-    if (post.authorUid !== currentUser.uid) {
-      return alert("Aap sirf apni post manage kar sakte hain.");
-    }
+      <button data-action="edit" style="width:100%;padding:16px;
+        background:none;border:0;color:white;text-align:left;
+        font-size:16px;">✏️ Edit Post</button>
 
-    if (choices === "1") {
-      const newText = prompt("Naya caption likhein:", post.text || "");
-      if (newText === null) return;
+      <button data-action="hide" style="width:100%;padding:16px;
+        background:none;border:0;color:white;text-align:left;
+        font-size:16px;">👁️ Hide from Profile</button>
 
-      await postRef.update({
-        text: newText.slice(0, 2000),
-        updatedAt: FV.serverTimestamp()
-      });
+      <button data-action="archive" style="width:100%;padding:16px;
+        background:none;border:0;color:white;text-align:left;
+        font-size:16px;">📦 Archive</button>
 
-      alert("Post update ho gayi!");
-    }
+      <button data-action="delete" style="width:100%;padding:16px;
+        background:none;border:0;color:#ff5555;text-align:left;
+        font-size:16px;">🗑️ Delete</button>
 
-    else if (choices === "2") {
-      await postRef.update({
-        hiddenFromProfile: true,
-        updatedAt: FV.serverTimestamp()
-      });
+      <button data-action="cancel" style="width:100%;padding:14px;
+        background:#334155;border:0;border-radius:10px;
+        color:white;margin-top:10px;">Cancel</button>
+    </div>
+  `;
 
-      alert("Post profile se hide ho gayi.");
-    }
+  document.body.appendChild(menu);
 
-    else if (choices === "3") {
-      await postRef.update({
-        isArchived: true,
-        archivedAt: FV.serverTimestamp()
-      });
+  function popup(title, message, editValue = null) {
+    return new Promise(resolve => {
+      const box = document.createElement("div");
+      box.style.cssText = `
+        position:fixed;inset:0;z-index:1000000;
+        background:#000b;display:flex;align-items:center;
+        justify-content:center;padding:20px;
+      `;
 
-      alert("Post Archive mein chali gayi.");
-    }
+      const panel = document.createElement("div");
+      panel.style.cssText = `
+        background:#172033;color:white;width:100%;
+        max-width:400px;padding:20px;border-radius:16px;
+      `;
 
-    else if (choices === "4") {
-      if (!confirm("Post Recently Deleted mein bhejein?")) return;
+      const heading = document.createElement("h3");
+      heading.textContent = title;
 
-      await postRef.update({
-        isDeleted: true,
-        deletedAt: FV.serverTimestamp()
-      });
+      const msg = document.createElement("p");
+      msg.textContent = message;
+      msg.style.color = "#cbd5e1";
 
-      alert("Post Recently Deleted mein bhej di gayi.");
-    }
+      panel.append(heading, msg);
 
-  } catch (err) {
-    alert("Error: " + err.message);
+      let input = null;
+
+      if (editValue !== null) {
+        input = document.createElement("textarea");
+        input.value = editValue;
+        input.maxLength = 2000;
+        input.style.cssText = `
+          width:100%;min-height:110px;box-sizing:border-box;
+          padding:10px;background:#0f172a;color:white;
+          border:1px solid #475569;border-radius:8px;
+        `;
+        panel.appendChild(input);
+      }
+
+      const actions = document.createElement("div");
+      actions.style.cssText = "display:flex;gap:10px;margin-top:18px;";
+
+      const cancel = document.createElement("button");
+      cancel.textContent = "Cancel";
+      cancel.style.cssText =
+        "flex:1;padding:12px;background:#334155;color:white;border:0;border-radius:8px;";
+
+      const ok = document.createElement("button");
+      ok.textContent = editValue !== null ? "Save" : "Confirm";
+      ok.style.cssText =
+        "flex:1;padding:12px;background:#0284c7;color:white;border:0;border-radius:8px;";
+
+      cancel.onclick = () => {
+        box.remove();
+        resolve(null);
+      };
+
+      ok.onclick = () => {
+        box.remove();
+        resolve(input ? input.value : true);
+      };
+
+      actions.append(cancel, ok);
+      panel.appendChild(actions);
+      box.appendChild(panel);
+      document.body.appendChild(box);
+
+      if (input) input.focus();
+    });
   }
+
+  menu.addEventListener("click", async function(e) {
+    const button = e.target.closest("button[data-action]");
+    if (!button) {
+      if (e.target === menu) menu.remove();
+      return;
+    }
+
+    const action = button.dataset.action;
+    menu.remove();
+
+    if (action === "cancel") return;
+
+    try {
+      if (!currentUser) {
+        return popup("Login Required", "Please login first.");
+      }
+
+      const ref = db.collection("pulse_posts").doc(postId);
+      const snap = await ref.get();
+
+      if (!snap.exists) {
+        return popup("Not Found", "Post nahi mili.");
+      }
+
+      const post = snap.data();
+
+      if (post.authorUid !== currentUser.uid) {
+        return popup("Access Denied", "You can only manage your own post.");
+      }
+
+      if (action === "edit") {
+        const value = await popup(
+          "Edit Post",
+          "Apna caption badlein:",
+          post.text || ""
+        );
+
+        if (value === null) return;
+
+        await ref.update({
+          text: value.slice(0, 2000),
+          updatedAt: FV.serverTimestamp()
+        });
+
+        return popup("Success", "Caption update ho gaya!");
+      }
+
+      if (action === "hide") {
+        await ref.update({
+          hiddenFromProfile: true,
+          updatedAt: FV.serverTimestamp()
+        });
+
+        return popup("Success", "Post profile se hide ho gayi!");
+      }
+
+      if (action === "archive") {
+        await ref.update({
+          isArchived: true,
+          archivedAt: FV.serverTimestamp()
+        });
+
+        return popup("Success", "Post Archive mein chali gayi!");
+      }
+
+      if (action === "delete") {
+        const confirmDelete = await popup(
+          "Delete Post",
+          "Kya aap is post ko Recently Deleted mein bhejna chahte hain?"
+        );
+
+        if (!confirmDelete) return;
+
+        await ref.update({
+          isDeleted: true,
+          deletedAt: FV.serverTimestamp()
+        });
+
+        return popup("Success", "Post Recently Deleted mein bhej di gayi!");
+      }
+
+    } catch (err) {
+      popup("Error", err.message || "Kuchh galat ho gaya.");
+    }
+  });
 };
+  
       if (!currentUser) return;
       if (unsubFeed) unsubFeed();
       unsubFeed = db.collection("pulse_posts").orderBy("createdAt", "desc").limit(30)
