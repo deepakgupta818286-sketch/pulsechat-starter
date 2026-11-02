@@ -803,86 +803,67 @@
 
     el("btn-account-logout").addEventListener("click", () => auth.signOut().catch(err => alert(err.message)));
 
-    // Media Storage Upload Engine
     
-// Media Storage Upload Engine
+// Cloudinary Media Upload Engine
 async function uploadMedia(file, folder, onProg) {
   if (!currentUser) throw new Error("Pehle login karein.");
   if (!file) throw new Error("File select karein.");
 
-  let uploadFile = file;
-  let extension = file.name.split(".").pop() || "file";
-
-  // Compress images before upload
-  if (file.type.startsWith("image/")) {
-    uploadFile = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-
-      reader.onload = (event) => {
-        const img = new Image();
-
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          const maxWidth = 1000;
-          const scale = Math.min(1, maxWidth / img.width);
-
-          canvas.width = Math.round(img.width * scale);
-          canvas.height = Math.round(img.height * scale);
-
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-          canvas.toBlob(
-            blob => blob
-              ? resolve(blob)
-              : reject(new Error("Image compress nahi hui.")),
-            "image/jpeg",
-            0.80
-          );
-        };
-
-        img.onerror = () => reject(new Error("Image process nahi hui."));
-        img.src = event.target.result;
-      };
-
-      reader.onerror = () => reject(new Error("File read nahi hui."));
-      reader.readAsDataURL(file);
-    });
-
-    extension = "jpg";
-  }
-
-  const filePath =
-    `${folder}/${currentUser.uid}/${Date.now()}.${extension}`;
-
-  const uploadTask = storage.ref().child(filePath).put(uploadFile, {
-    contentType: file.type.startsWith("image/")
-      ? "image/jpeg"
-      : file.type
-  });
+  const cloudName = "mactepqw";
+  const uploadPreset = "pulsechat_upload";
 
   return new Promise((resolve, reject) => {
-    uploadTask.on(
-      "state_changed",
-      snapshot => {
-        if (typeof onProg === "function") {
-          onProg(
-            (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-          );
-        }
-      },
-      error => reject(error),
-      async () => {
-        try {
-          const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
-          resolve(downloadURL);
-        } catch (error) {
-          reject(error);
-        }
-      }
+    const formData = new FormData();
+
+    formData.append("file", file);
+    formData.append("upload_preset", uploadPreset);
+
+    const xhr = new XMLHttpRequest();
+
+    xhr.open(
+      "POST",
+      `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`
     );
+
+    xhr.upload.addEventListener("progress", event => {
+      if (event.lengthComputable && typeof onProg === "function") {
+        onProg((event.loaded / event.total) * 100);
+      }
+    });
+
+    xhr.onload = () => {
+      let result = {};
+
+      try {
+        result = JSON.parse(xhr.responseText);
+      } catch (error) {
+        reject(new Error("Cloudinary ka response nahi mila."));
+        return;
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300 && result.secure_url) {
+        if (typeof onProg === "function") onProg(100);
+        resolve(result.secure_url);
+      } else {
+        reject(new Error(
+          result.error?.message || "Media upload nahi hua."
+        ));
+      }
+    };
+
+    xhr.onerror = () => {
+      reject(new Error("Internet ya Cloudinary connection mein dikkat hai."));
+    };
+
+    xhr.ontimeout = () => {
+      reject(new Error("Upload mein bahut samay lag raha hai. Dobara try karein."));
+    };
+
+    xhr.timeout = 120000;
+    xhr.send(formData);
   });
 }
+    
     
     
 
