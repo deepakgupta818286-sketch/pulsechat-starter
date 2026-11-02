@@ -1804,93 +1804,70 @@ if (btnVoice) {
       loadUsersDirectory();
     };
 
-    // Profile & Highlights
-    async function loadProfileData() {
-  if (!currentUser) return;
-  const uDoc = await db.collection("users").doc(currentUser.uid).get();
-  if (uDoc.exists) {
-    const d = uDoc.data();
-    if (el("prof-name")) el("prof-name").textContent = d.fullName || "User";
-    if (el("prof-handle")) el("prof-handle").textContent = "@" + (d.username || "user");
-    if (el("prof-bio")) el("prof-bio").textContent = d.bio || "PulseChat member";
-    if (el("stat-followers")) el("stat-followers").textContent = d.followersCount || 0;
-    if (el("stat-following")) el("stat-following").textContent = d.followingCount || 0;
     
-    // DP Photo display engine
-    const av = el("prof-avatar");
-    if (av) {
-      if (d.photoURL) {
-        av.innerHTML = `<img src="${d.photoURL}" style="width:100%; height:100%; border-radius:50%; object-fit:cover; display:block;">`;
-      } else {
-        av.textContent = (d.fullName ? d.fullName[0] : "U").toUpperCase();
-      }
-    }
-  }
-      
-
-      const pSnap = await db.collection("pulse_posts").where("authorUid", "==", currentUser.uid).get();
-      el("stat-posts").textContent = pSnap.size;
-
-      if (unsubHighlights) unsubHighlights();
-      unsubHighlights = db.collection("users").doc(currentUser.uid).collection("highlights")
-        .orderBy("createdAt", "desc").onSnapshot(snap => {
-          const shelf = el("profile-highlights-shelf");
-          shelf.innerHTML = "";
-          snap.forEach(doc => {
-            const h = doc.data();
-            const itm = document.createElement("div");
-            itm.className = "highlight-item";
-            itm.innerHTML = `
-              <div class="highlight-circle">${h.mediaUrl ? `<img src="${escapeHTML(h.mediaUrl)}" style="width:100%;height:100%;object-fit:cover;">` : '⭐'}</div>
-              <span class="highlight-title">${escapeHTML(h.title || 'Highlight')}</span>
-            `;
-            shelf.appendChild(itm);
-          });
-        });
-    }
-
-    const hlModal = el("custom-highlight-modal");
-const hlTitleInput = el("modal-hl-title");
-const hlUrlInput = el("modal-hl-url");
-const hlSaveBtn = el("modal-hl-save");
-const hlCancelBtn = el("modal-hl-cancel");
-
-el("btn-create-highlight").addEventListener("click", () => {
-  hlTitleInput.value = "";
-  hlUrlInput.value = "";
-  hlModal.style.display = "flex";
-  hlTitleInput.focus();
-});
-
-hlCancelBtn.addEventListener("click", () => {
-  hlModal.style.display = "none";
-});
-
-hlSaveBtn.addEventListener("click", async () => {
-  const title = hlTitleInput.value.trim();
-  const mediaUrl = hlUrlInput.value.trim();
-
-  if (!title) return alert("Highlight title dalein.");
-  if (!mediaUrl) return alert("Image URL dalein.");
-
-  hlSaveBtn.disabled = true;
-  hlSaveBtn.textContent = "Saving...";
+// Profile & Highlights
+async function loadProfileData() {
+  if (!currentUser) return;
 
   try {
-    await db.collection("users").doc(currentUser.uid).collection("highlights").add({
-      title: title.slice(0, 40),
-      mediaUrl: mediaUrl,
-      createdAt: FV.serverTimestamp()
-    });
-    hlModal.style.display = "none";
-    if (typeof loadProfileData === "function") await loadProfileData();
+    const uid = currentUser.uid;
+
+    const [uDoc, pSnap, followersSnap, followingSnap] = await Promise.all([
+      db.collection("users").doc(uid).get(),
+      db.collection("pulse_posts").where("authorUid", "==", uid).get(),
+      db.collection("users").doc(uid).collection("followers").get(),
+      db.collection("users").doc(uid).collection("following").get()
+    ]);
+
+    if (uDoc.exists) {
+      const d = uDoc.data();
+
+      if (el("prof-name")) el("prof-name").textContent = d.fullName || "User";
+      if (el("prof-handle")) el("prof-handle").textContent = "@" + (d.username || "user");
+      if (el("prof-bio")) el("prof-bio").textContent = d.bio || "PulseChat member";
+
+      if (el("stat-followers")) el("stat-followers").textContent = followersSnap.size;
+      if (el("stat-following")) el("stat-following").textContent = followingSnap.size;
+
+      const av = el("prof-avatar");
+      if (av) {
+        if (d.photoURL) {
+          av.innerHTML = `<img src="${escapeHTML(d.photoURL)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;">`;
+        } else {
+          av.textContent = (d.fullName ? d.fullName[0] : "U").toUpperCase();
+        }
+      }
+    }
+
+    if (el("stat-posts")) el("stat-posts").textContent = pSnap.size;
+
+    if (unsubHighlights) unsubHighlights();
+
+    unsubHighlights = db.collection("users").doc(uid).collection("highlights")
+      .orderBy("createdAt", "desc").onSnapshot(snap => {
+        const shelf = el("profile-highlights-shelf");
+        if (!shelf) return;
+
+        shelf.innerHTML = "";
+
+        snap.forEach(doc => {
+          const h = doc.data();
+          const itm = document.createElement("div");
+          itm.className = "highlight-item";
+          itm.innerHTML = `
+            <div class="highlight-circle">${h.mediaUrl ? `<img src="${escapeHTML(h.mediaUrl)}" style="width:100%;height:100%;object-fit:cover;">` : "⭐"}</div>
+            <span class="highlight-title">${escapeHTML(h.title || "Highlight")}</span>
+          `;
+          shelf.appendChild(itm);
+        });
+      });
+
   } catch (err) {
-    alert("Error: " + err.message);
-  } finally {
-    hlSaveBtn.disabled = false;
-    hlSaveBtn.textContent = "Save";
+    console.error("Profile load error:", err);
+    alert("Profile load nahi ho payi: " + err.message);
   }
-});
+}
+    
     
 
     // Settings
