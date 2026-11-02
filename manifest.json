@@ -1,0 +1,10 @@
+{
+  "name": "PulseChat",
+  "short_name": "PulseChat",
+  "description": "PulseChat is a social networking platform to chat, share stories, make friends, and connect with people.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6C3BFF"
+}
